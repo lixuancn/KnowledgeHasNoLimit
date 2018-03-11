@@ -10,11 +10,17 @@ import (
 	"net/http"
 	"time"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/joho/godotenv"
 )
 
 //web服务来实现增删改查
-func run()error{
+func runWeb()error{
 	mux := makeMuxRouter()
+
+	err := godotenv.Load()
+	if err != nil{
+		log.Fatal(err)
+	}
 	httpAddr := os.Getenv("ADDR")
 	log.Println("Listening on ", httpAddr)
 	s := &http.Server{
