@@ -1,4 +1,4 @@
-package main
+package bcnet
 
 import (
 	"os"
@@ -11,10 +11,11 @@ import (
 	"time"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
+	"BlockChain/model"
 )
 
 //web服务来实现增删改查
-func runWeb()error{
+func RunWeb()error{
 	mux := makeMuxRouter()
 
 	err := godotenv.Load()
@@ -48,7 +49,7 @@ type Message struct{
 }
 
 func handleGetBlockchain(w http.ResponseWriter, r *http.Request){
-	bytes, err := json.MarshalIndent(Blockchains, "", "  ")
+	bytes, err := json.MarshalIndent(model.Blockchains, "", "  ")
 	if err != nil{
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -64,11 +65,13 @@ func handleWriteBlock(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	defer r.Body.Close()
-	newBlock := generateBlock(Blockchains[len(Blockchains)-1], m.BPM)
-	if isBlockValid(Blockchains[len(Blockchains)-1], newBlock){
-		newBlockchains := append(Blockchains, newBlock)
-		replaceChain(newBlockchains)
+	newBlock := model.GenerateBlock(model.Blockchains[len(model.Blockchains)-1], m.BPM)
+	if model.IsBlockValid(model.Blockchains[len(model.Blockchains)-1], newBlock){
+		newBlockchains := append(model.Blockchains, newBlock)
+		model.ReplaceChain(newBlockchains)
 		spew.Dump(newBlockchains)
+	}else{
+		log.Println("验证失败，非法Block")
 	}
 	responseWithJson(w, r, http.StatusCreated, newBlock)
 }

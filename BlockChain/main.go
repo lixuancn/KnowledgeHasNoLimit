@@ -1,17 +1,15 @@
 package main
 
 import (
-	"time"
-	"github.com/davecgh/go-spew/spew"
+	"BlockChain/model"
+	"BlockChain/bcnet"
 )
 
 func main(){
 	//创世块
-	genesisBlock := Block{0, time.Now().String(), 0, "", ""}
-	spew.Dump(genesisBlock)
-	Blockchains = append(Blockchains, genesisBlock)
+	model.GenesisBlock()
 	//Web方式
-	runWeb()
+	//bcnet.RunWeb()
 	//Tcp广播同步
-	//runTcp()
+	bcnet.RunTcp()
 }

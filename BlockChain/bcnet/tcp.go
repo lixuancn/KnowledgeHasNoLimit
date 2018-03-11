@@ -1,4 +1,4 @@
-package main
+package bcnet
 
 import (
 	"time"
@@ -12,16 +12,17 @@ import (
 	"encoding/json"
 	"github.com/joho/godotenv"
 	"os"
+	"BlockChain/model"
 )
 
 //待同步的区块
-var bcServer chan []Block
+var bcServer chan []model.Block
 
 var mutexTcp = sync.Mutex{}
 
-func runTcp()error{
+func RunTcp()error{
 	//待同步的区块
-	bcServer = make(chan []Block)
+	bcServer = make(chan []model.Block)
 
 	//TCP监听
 	err := godotenv.Load()
@@ -58,12 +59,12 @@ func handleConn(conn net.Conn){
 				continue
 			}
 			//生成一个新块
-			oldBlock := Blockchains[len(Blockchains)-1]
-			newBlock := generateBlock(oldBlock, bpm)
-			if isBlockValid(oldBlock, newBlock){
-				newBlockchains := append(Blockchains, newBlock)
-				replaceChain(newBlockchains)
-				bcServer <- Blockchains
+			oldBlock := model.Blockchains[len(model.Blockchains)-1]
+			newBlock := model.GenerateBlock(oldBlock, bpm)
+			if model.IsBlockValid(oldBlock, newBlock){
+				newBlockchains := append(model.Blockchains, newBlock)
+				model.ReplaceChain(newBlockchains)
+				bcServer <- model.Blockchains
 				io.WriteString(conn, "\n请输入一个新值：")
 			}
 		}
@@ -73,7 +74,7 @@ func handleConn(conn net.Conn){
 		for{
 			time.Sleep(30 * time.Second)
 			mutexTcp.Lock()
-			output, err := json.Marshal(Blockchains)
+			output, err := json.Marshal(model.Blockchains)
 			if err != nil{
 				log.Fatal(err)
 			}
@@ -82,6 +83,6 @@ func handleConn(conn net.Conn){
 		}
 	}()
 	for _ = range bcServer{
-		spew.Dump(Blockchains)
+		spew.Dump(model.Blockchains)
 	}
 }
