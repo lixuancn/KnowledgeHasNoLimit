@@ -1,5 +1,5 @@
-package main
+package nsqlookupd
 
 type Context struct {
-
+	nsqlookupd *NSQLookupd
 }
