@@ -1,31 +1,16 @@
-package main
+package nsqlookupd
 
 import (
-	"github.com/judwhite/go-svc/svc"
-	"log"
-	"syscall"
-	"fmt"
+	"sync"
+	"net"
+	"nsq/internal/util"
 )
 
-type program struct {
-}
-
-func main() {
-	fmt.Println("启动NSQ:")
-	prg := &program{}
-	if err := svc.Run(prg, syscall.SIGINT, syscall.SIGTERM); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func (this *program) Init(s svc.Environment) error {
-	return nil
-}
-
-func (this *program) Start() error {
-	return nil
-}
-
-func (this *program) Stop() error {
-	return nil
+type NSQLookupd struct {
+	sync.RWMutex
+	opts *Options
+	tcpListener net.Listener
+	httpListener net.Listener
+	waitGroup util.WaitGroupWrapper
+	DB *RegisterationDB
 }
