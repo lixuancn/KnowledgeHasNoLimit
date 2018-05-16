@@ -17,7 +17,7 @@ func (l logWrite) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func serve(listener net.Listener, handler http.Handler, proto string, logf lg.AppLogFunc) {
+func Serve(listener net.Listener, handler http.Handler, proto string, logf lg.AppLogFunc) {
 	logf(lg.LOG_INFO, "%s: listening on %s", proto, listener.Addr())
 	server := &http.Server{
 		Handler:  handler,

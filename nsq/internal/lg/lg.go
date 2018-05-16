@@ -1,6 +1,9 @@
 package lg
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type LogLevel int
 
@@ -42,6 +45,7 @@ func (l LogLevel) String() string {
 
 func ParseLogLevel(levelstr string, verbose bool) (LogLevel, error) {
 	lvl := LOG_INFO
+	levelstr = strings.ToUpper(levelstr)
 	switch levelstr {
 	case "DEBUG":
 		lvl = LOG_DEBUG
