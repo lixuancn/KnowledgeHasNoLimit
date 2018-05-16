@@ -53,6 +53,7 @@ func (l *NSQLookupd) Main() {
 	l.waitGroup.Wrap(func() {
 		protocol.TCPServer(tcpListener, tcpServer, l.logf)
 	})
+
 	httpListener, err := net.Listen("tcp", l.opts.HTTPAddress)
 	if err != nil {
 		l.logf(LOG_FATAL, "listen (%s) failed - %s", l.opts.HTTPAddress, err)

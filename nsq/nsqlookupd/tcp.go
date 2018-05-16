@@ -1,20 +1,20 @@
 package nsqlookupd
 
 import (
-	"nsq/internal/protocol"
-	"net"
 	"io"
+	"net"
+	"nsq/internal/protocol"
 )
 
 type tcpServer struct {
 	ctx *Context
 }
 
-func (p *tcpServer) Handle(clientConn net.Conn){
+func (p *tcpServer) Handle(clientConn net.Conn) {
 	p.ctx.nsqlookupd.logf(LOG_INFO, "TCP: new client(%s)", clientConn.RemoteAddr())
 	buf := make([]byte, 4)
 	_, err := io.ReadFull(clientConn, buf)
-	if err != nil{
+	if err != nil {
 		p.ctx.nsqlookupd.logf(LOG_ERROR, "failed to read protocol version - %s", err)
 		clientConn.Close()
 		return
@@ -32,7 +32,7 @@ func (p *tcpServer) Handle(clientConn net.Conn){
 		return
 	}
 	err = prot.IOLoop(clientConn)
-	if err != nil{
+	if err != nil {
 		p.ctx.nsqlookupd.logf(LOG_ERROR, "client(%s) - %s", clientConn.RemoteAddr(), err)
 		return
 	}

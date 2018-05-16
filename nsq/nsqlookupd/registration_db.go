@@ -48,7 +48,7 @@ func (p *Producer) Tombstone() {
 	p.tombstonedAt = time.Now()
 }
 
-func (p *Producer) IsTombstone(lifetime time.Duration) bool {
+func (p *Producer) IsTombstoned(lifetime time.Duration) bool {
 	return p.tombstoned && time.Now().Sub(p.tombstonedAt) < lifetime
 }
 
@@ -67,7 +67,7 @@ func (r *RegistrationDB) AddRegistration(k Registration) {
 	}
 }
 
-func (r *RegistrationDB) AddProduce(k Registration, p *Producer) bool {
+func (r *RegistrationDB) AddProducer(k Registration, p *Producer) bool {
 	r.Lock()
 	defer r.Unlock()
 	producers := r.registrationMap[k]
@@ -220,7 +220,7 @@ func (pp Producers) FilterByActive(inactivityTimeout time.Duration, tombstoneLif
 	results := Producers{}
 	for _, p := range pp {
 		cur := time.Unix(0, atomic.LoadInt64(&p.peerInfo.lastUpdate))
-		if now.Sub(cur) > inactivityTimeout || p.IsTombstone(tombstoneLifetime) {
+		if now.Sub(cur) > inactivityTimeout || p.IsTombstoned(tombstoneLifetime) {
 			continue
 		}
 		results = append(results, p)
