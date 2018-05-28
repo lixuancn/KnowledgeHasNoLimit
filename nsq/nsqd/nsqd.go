@@ -13,11 +13,17 @@ import (
 	"nsq/internal/statsd"
 	"nsq/internal/util"
 	"nsq/internal/version"
+	"nsq/internal/protocol"
 	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+	"errors"
+	"path"
+	"fmt"
+	"bytes"
+	"encoding/json"
 )
 
 const (
@@ -146,10 +152,6 @@ func New(opts *Options) *NSQD {
 	return n
 }
 
-func (n *NSQD) LoadMetadata() error {
-	return nil
-}
-
 func (n *NSQD) PersistMetadata() error {
 	return nil
 }
@@ -214,4 +216,119 @@ func buildTLSConfig(opts *Options) (*tls.Config, error) {
 	tlsConfig.BuildNameToCertificate()
 
 	return tlsConfig, nil
+}
+
+
+type meta struct {
+	Topics []struct {
+		Name     string `json:"name"`
+		Paused   bool   `json:"paused"`
+		Channels []struct {
+			Name   string `json:"name"`
+			Paused bool   `json:"paused"`
+		} `json:"channels"`
+	} `json:"topics"`
+}
+
+func newMetadataFile(opts *Options)string{
+	return path.Join(opts.DataPath, "nsqd.dat")
+}
+
+func oldMetadataFile(opts *Options)string{
+	return path.Join(opts.DataPath, fmt.Sprintf("nsqd.%d.dat", opts.ID))
+}
+
+func readOrEmpty(fn string)([]byte, error){
+	data, err := ioutil.ReadFile(fn)
+	if err != nil{
+		if !os.IsNotExist(err){
+			return nil, fmt.Errorf("failed to read metadata from %s - %s", fn, err)
+		}
+	}
+	return data, nil
+}
+
+func writeSyncFile(fn string, data []byte)error{
+	f, err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0600)
+	if err != nil{
+		return err
+	}
+	_, err = f.Write(data)
+	if err != nil{
+		return err
+	}
+	err = f.Sync()
+	if err != nil{
+		return err
+	}
+	f.Close()
+	return nil
+}
+
+func (n *NSQD) LoadMetadata() error {
+	atomic.StoreInt32(&n.isLoading, 1)
+	defer atomic.StoreInt32(&n.isLoading, 0)
+	fn := newMetadataFile(n.getOpts())
+	fnID := oldMetadataFile(n.getOpts())
+	data, err := readOrEmpty(fn)
+	if err != nil{
+		return err
+	}
+	dataID, errID := readOrEmpty(fnID)
+	if errID != nil{
+		return errID
+	}
+	if data == nil && dataID == nil{
+		return nil
+	}
+	if data != nil && dataID != nil{
+		if bytes.Compare(data, dataID) != 0{
+			return fmt.Errorf("metadata in %s and %s do not match (delete one)", fn, fnID)
+		}
+	}
+	if data == nil{
+		fn = fnID
+		data = dataID
+	}
+	var m meta
+	err = json.Unmarshal(data, &m)
+	if err != nil{
+		return fmt.Errorf("failed to parse metadata in %s - %s", fn, err)
+	}
+	for _, t := range m.Topics{
+		if !protocol.IsValidTopicName(t.Name){
+			n.logf(LOG_WARN, "skipping creation of invalid topic %s", t.Name)
+			continue
+		}
+		topic := n.GetTopic(t.Name)
+		if t.Paused {
+			topic.Pause()
+		}
+	}
+
+	return nil
+}
+
+func (n *NSQD)GetTopic(topicName string)*Topic{
+	n.RLock()
+	t, ok := n.topicMap[topicName]
+	n.RUnlock()
+	if ok {
+		return t
+	}
+	n.Lock()
+	t, ok = n.topicMap[topicName]
+	if ok{
+		n.Unlock()
+		return t
+	}
+	deleteCallback := func(t *Topic) {
+		n.DeleteExistingTopic(t.name)
+	}
+	t = NewTopic(topicName, &context{n}, deleteCallback)
+	return t
+}
+
+func(n *NSQD)DeleteExistingTopic(topicName string){
+
 }

@@ -48,7 +48,7 @@ func New(log lg.AppLogFunc, client *http_api.Client) *ClusterInfo {
 
 func (c *ClusterInfo) logf(f string, args ...interface{}) {
 	if c.log != nil {
-		c.log(lg.INFO, f, args...)
+		c.log(lg.LOG_INFO, f, args...)
 	}
 }
 
