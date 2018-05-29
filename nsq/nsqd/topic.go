@@ -52,7 +52,21 @@ func (t *Topic) GetChannel(channelName string) *Channel {
 	return channel
 }
 
-func (t *Topic) getOrCreateChannel(channelName string) *Channel {
+func (t *Topic) getOrCreateChannel(channelName string)(*Channel, bool){
+	channel, ok := t.channelMap[channelName]
+	if !ok{
+		deleteCallback := func(c *Channel){
+			t.DeleteExistingChannel(c.name)
+		}
+		channel = NewChannel(t.name, channelName, t.ctx, deleteCallback)
+		t.channelMap[channelName] = channel
+		t.ctx.nsqd.logf(LOG_INFO, "TOPIC(%s) new channel(%s)", t.name, channel.name)
+		return channel, true
+	}
+	return channel, false
+}
+
+func (t *Topic) DeleteExistingChannel(channelName string) {
 
 }
 func (t *Topic) Pause() {
