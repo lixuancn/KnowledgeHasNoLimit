@@ -1,5 +1,5 @@
 package nsqd
 
-func getBackendName(topicName, channelName string)string{
+func getBackendName(topicName, channelName string) string {
 	return topicName + ":" + channelName
 }

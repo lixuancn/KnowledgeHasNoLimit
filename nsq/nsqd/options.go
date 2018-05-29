@@ -1,16 +1,15 @@
 package nsqd
 
 import (
-	"nsq/internal/lg"
-	"time"
-	"os"
-	"log"
 	"crypto/md5"
-	"io"
-	"hash/crc32"
 	"crypto/tls"
+	"hash/crc32"
+	"io"
+	"log"
+	"nsq/internal/lg"
+	"os"
+	"time"
 )
-
 
 type Options struct {
 	// basic options
@@ -82,16 +81,16 @@ type Options struct {
 	SnappyEnabled   bool `flag:"snappy"`
 }
 
-func NewOptions()*Options{
+func NewOptions() *Options {
 	hostname, err := os.Hostname()
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 	h := md5.New()
 	io.WriteString(h, hostname)
 	defaultID := int64(crc32.ChecksumIEEE(h.Sum(nil)) % 1024)
 	return &Options{
-		ID: defaultID,
+		ID:        defaultID,
 		LogPrefix: "[nsqd] ",
 		LogLevel:  "info",
 

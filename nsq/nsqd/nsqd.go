@@ -1,8 +1,12 @@
 package nsqd
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -10,20 +14,16 @@ import (
 	"nsq/internal/dirlock"
 	"nsq/internal/http_api"
 	"nsq/internal/lg"
+	"nsq/internal/protocol"
 	"nsq/internal/statsd"
 	"nsq/internal/util"
 	"nsq/internal/version"
-	"nsq/internal/protocol"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-	"errors"
-	"path"
-	"fmt"
-	"bytes"
-	"encoding/json"
 )
 
 const (
@@ -218,7 +218,6 @@ func buildTLSConfig(opts *Options) (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
-
 type meta struct {
 	Topics []struct {
 		Name     string `json:"name"`
@@ -230,35 +229,35 @@ type meta struct {
 	} `json:"topics"`
 }
 
-func newMetadataFile(opts *Options)string{
+func newMetadataFile(opts *Options) string {
 	return path.Join(opts.DataPath, "nsqd.dat")
 }
 
-func oldMetadataFile(opts *Options)string{
+func oldMetadataFile(opts *Options) string {
 	return path.Join(opts.DataPath, fmt.Sprintf("nsqd.%d.dat", opts.ID))
 }
 
-func readOrEmpty(fn string)([]byte, error){
+func readOrEmpty(fn string) ([]byte, error) {
 	data, err := ioutil.ReadFile(fn)
-	if err != nil{
-		if !os.IsNotExist(err){
+	if err != nil {
+		if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("failed to read metadata from %s - %s", fn, err)
 		}
 	}
 	return data, nil
 }
 
-func writeSyncFile(fn string, data []byte)error{
-	f, err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0600)
-	if err != nil{
+func writeSyncFile(fn string, data []byte) error {
+	f, err := os.OpenFile(fn, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
 		return err
 	}
 	_, err = f.Write(data)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	err = f.Sync()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	f.Close()
@@ -271,32 +270,32 @@ func (n *NSQD) LoadMetadata() error {
 	fn := newMetadataFile(n.getOpts())
 	fnID := oldMetadataFile(n.getOpts())
 	data, err := readOrEmpty(fn)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	dataID, errID := readOrEmpty(fnID)
-	if errID != nil{
+	if errID != nil {
 		return errID
 	}
-	if data == nil && dataID == nil{
+	if data == nil && dataID == nil {
 		return nil
 	}
-	if data != nil && dataID != nil{
-		if bytes.Compare(data, dataID) != 0{
+	if data != nil && dataID != nil {
+		if bytes.Compare(data, dataID) != 0 {
 			return fmt.Errorf("metadata in %s and %s do not match (delete one)", fn, fnID)
 		}
 	}
-	if data == nil{
+	if data == nil {
 		fn = fnID
 		data = dataID
 	}
 	var m meta
 	err = json.Unmarshal(data, &m)
-	if err != nil{
+	if err != nil {
 		return fmt.Errorf("failed to parse metadata in %s - %s", fn, err)
 	}
-	for _, t := range m.Topics{
-		if !protocol.IsValidTopicName(t.Name){
+	for _, t := range m.Topics {
+		if !protocol.IsValidTopicName(t.Name) {
 			n.logf(LOG_WARN, "skipping creation of invalid topic %s", t.Name)
 			continue
 		}
@@ -309,7 +308,7 @@ func (n *NSQD) LoadMetadata() error {
 	return nil
 }
 
-func (n *NSQD)GetTopic(topicName string)*Topic{
+func (n *NSQD) GetTopic(topicName string) *Topic {
 	n.RLock()
 	t, ok := n.topicMap[topicName]
 	n.RUnlock()
@@ -318,7 +317,7 @@ func (n *NSQD)GetTopic(topicName string)*Topic{
 	}
 	n.Lock()
 	t, ok = n.topicMap[topicName]
-	if ok{
+	if ok {
 		n.Unlock()
 		return t
 	}
@@ -329,6 +328,6 @@ func (n *NSQD)GetTopic(topicName string)*Topic{
 	return t
 }
 
-func(n *NSQD)DeleteExistingTopic(topicName string){
+func (n *NSQD) DeleteExistingTopic(topicName string) {
 
 }

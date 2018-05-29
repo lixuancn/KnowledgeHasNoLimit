@@ -3,6 +3,7 @@ package nsqd
 import (
 	"nsq/internal/util"
 	"sync"
+	"sync/atomic"
 )
 
 type Topic struct {
@@ -30,10 +31,30 @@ type Topic struct {
 	ctx *context
 }
 
-func NewTopic(topicName string, ctx *context, deleteCallback func(*Topic)) *Topic{
+func NewTopic(topicName string, ctx *context, deleteCallback func(*Topic)) *Topic {
 	return &Topic{}
 }
 
-func (t *Topic)Pause(){
+func (t *Topic) Exiting() bool {
+	return atomic.LoadInt32(&t.exitFlag) == 1
+}
+
+func (t *Topic) GetChannel(channelName string) *Channel {
+	t.Lock()
+	channel, isNew := t.getOrCreateChannel(channelName)
+	t.Unlock()
+	if isNew {
+		select {
+		case t.channelUpdateChan <- 1:
+		case <-t.exitChan:
+		}
+	}
+	return channel
+}
+
+func (t *Topic) getOrCreateChannel(channelName string) *Channel {
+
+}
+func (t *Topic) Pause() {
 
 }
