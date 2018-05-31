@@ -52,10 +52,10 @@ func (t *Topic) GetChannel(channelName string) *Channel {
 	return channel
 }
 
-func (t *Topic) getOrCreateChannel(channelName string)(*Channel, bool){
+func (t *Topic) getOrCreateChannel(channelName string) (*Channel, bool) {
 	channel, ok := t.channelMap[channelName]
-	if !ok{
-		deleteCallback := func(c *Channel){
+	if !ok {
+		deleteCallback := func(c *Channel) {
 			t.DeleteExistingChannel(c.name)
 		}
 		channel = NewChannel(t.name, channelName, t.ctx, deleteCallback)
