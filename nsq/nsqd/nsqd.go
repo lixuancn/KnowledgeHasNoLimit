@@ -331,3 +331,7 @@ func (n *NSQD) GetTopic(topicName string) *Topic {
 func (n *NSQD) DeleteExistingTopic(topicName string) {
 
 }
+
+func (n *NSQD) SetHealth(err error) {
+	n.errValue.Store(errStore{err: err})
+}
