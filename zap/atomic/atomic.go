@@ -3,6 +3,7 @@ package atomic
 import (
 	"sync/atomic"
 	"math"
+	"time"
 )
 
 type Int32 struct {
@@ -211,7 +212,7 @@ func boolToInt(b bool)uint32{
 }
 
 type Float64 struct {
-	v uint64
+	v Uint64
 }
 
 func NewFloat64(f float64)*Float64{
@@ -244,4 +245,42 @@ func (f *Float64)Sub(n float64)float64{
 
 func (f *Float64)CAS(old, new float64)bool{
 	return atomic.CompareAndSwapUint64(&f.v, math.Float64bits(old), math.Float64bits(new))
+}
+
+type Duration struct{
+	v Int64
+}
+
+func NewDuration(d time.Duration)*Duration{
+	return &Duration{
+		v: *NewInt64(int64(d)),
+	}
+}
+
+func (d *Duration)Load()time.Duration{
+	return time.Duration(d.v.Load())
+}
+
+func (d *Duration)Store(n time.Duration){
+	d.v.Store(int64(n))
+}
+
+func (d *Duration)Add(n time.Duration)time.Duration{
+	return time.Duration(d.v.Add(int64(n)))
+}
+
+func (d *Duration)Sub(n time.Duration)time.Duration{
+	return time.Duration(d.v.Sub(int64(n)))
+}
+
+func (d *Duration)Swap(n time.Duration)time.Duration{
+	return time.Duration(d.v.Swap(int64(n)))
+}
+
+func (d *Duration)CAS(old, new time.Duration)bool{
+	return d.v.CAS(int64(old), int64(new))
+}
+
+type Value struct{
+	atomic.Value
 }
