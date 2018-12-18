@@ -1,12 +1,23 @@
 package zapcore
 
-func encodeError(key string, err error, enc ObjectEncoder){
+import (
+	"sync"
+	"fmt"
+)
+
+func encodeError(key string, err error, enc ObjectEncoder)error{
 	basic := err.Error()
 	enc.AddString(key, basic)
 	switch e:=err.(type){
 	case errorGroup:
-		return enc.AddArray(key+"Causes", errArray(e.Errors))
+		return enc.AddArray(key+"Causes", errArray(e.Errors()))
+	case fmt.Formatter:
+		verbose := fmt.Sprintf("%+v", e)
+		if verbose != basic{
+			enc.AddString(key + "Verbose", verbose)
+		}
 	}
+	return nil
 }
 
 
@@ -33,6 +44,31 @@ func (errs errArray) MarshalLogArray(arr ArrayEncoder) error {
 	return nil
 }
 
-var _errArrayElemPool = sync.Pool{New: func() interface{} {
-	return &errArrayElem{}
-}}
+var errArrayElemPool = sync.Pool{
+	New: func() interface{} {
+		return &errArrayElem{}
+	},
+}
+
+type errArrayElem struct{
+	err error
+}
+
+func newErrArrayElem(err error)*errArrayElem{
+	e := errArrayElemPool.Get().(*errArrayElem)
+	e.err = err
+	return e
+}
+
+func (e errArrayElem)MarshalLogArray(arr ArrayEncoder)error{
+	return arr.AppendObject(e)
+}
+
+func (e errArrayElem)MarshalLogObject(enc ObjectEncoder)error{
+	return encodeError("error", e.err, enc)
+}
+
+func (e errArrayElem)Free(){
+	e.err = nil
+	errArrayElemPool.Put(e)
+}
