@@ -148,31 +148,37 @@ func (c *Cron) AddJob(spec string, cmd Job) (EntryID, error) {
 	return c.Schedule(schedule, cmd), nil
 }
 
-// Schedule adds a Job to the Cron to be run on the given schedule.
-// The job is wrapped with the configured Chain.
-func (c *Cron) Schedule(schedule Schedule, cmd Job) EntryID {
+func (c *Cron)Schedule(schedule Schedule, cmd Job)EntryID{
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
 	c.nextID++
 	entry := &Entry{
-		ID:         c.nextID,
-		Schedule:   schedule,
+		ID: c.nextID,
+		Schedule: schedule,
 		WrappedJob: c.chain.Then(cmd),
-		Job:        cmd,
+		Job: cmd,
 	}
-	if !c.running {
+	if !c.running{
 		c.entries = append(c.entries, entry)
-	} else {
+	}else{
 		c.add <- entry
 	}
 	return entry.ID
 }
 
-// Entries returns a snapshot of the cron entries.
-func (c *Cron) Entries() []Entry {
+func (c *Cron)Location()*time.Location{
+	return c.location
+}
+
+func (c *Cron)now()time.Time{
+	return time.Now().In(c.location)
+}
+
+//返回列表
+func (c *Cron)Entries()[]Entry{
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
-	if c.running {
+	if c.running{
 		replyChan := make(chan []Entry, 1)
 		c.snapshot <- replyChan
 		return <-replyChan
@@ -180,47 +186,57 @@ func (c *Cron) Entries() []Entry {
 	return c.entrySnapshot()
 }
 
-// Location gets the time zone location
-func (c *Cron) Location() *time.Location {
-	return c.location
+func (c *Cron)entrySnapshot()[]Entry{
+	var entries = make([]Entry, len(c.entries))
+	for i, e := range c.entries{
+		entries[i] = *e
+	}
+	return entries
 }
 
-// Entry returns a snapshot of the given entry, or nil if it couldn't be found.
-func (c *Cron) Entry(id EntryID) Entry {
-	for _, entry := range c.Entries() {
-		if id == entry.ID {
-			return entry
+//根据id获取其中一个
+func (c *Cron)Entry(id EntryID)Entry{
+	for _, e := range c.Entries(){
+		if id == e.ID{
+			return e
 		}
 	}
 	return Entry{}
 }
 
-// Remove an entry from being run in the future.
-func (c *Cron) Remove(id EntryID) {
+func (c *Cron)Remove(id EntryID){
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
-	if c.running {
+	if c.running{
 		c.remove <- id
-	} else {
+	}else{
 		c.removeEntry(id)
 	}
 }
 
-// Start the cron scheduler in its own goroutine, or no-op if already started.
-func (c *Cron) Start() {
+func (c *Cron)removeEntry(id EntryID){
+	var entries []*Entry
+	for _, e := range c.entries{
+		if e.ID != id{
+			entries = append(entries, e)
+		}
+	}
+	c.entries = entries
+}
+
+func (c *Cron)Start(){
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
-	if c.running {
+	if c.running{
 		return
 	}
 	c.running = true
 	go c.run()
 }
 
-// Run the cron scheduler, or no-op if already running.
-func (c *Cron) Run() {
+func (c *Cron)Run(){
 	c.runningMu.Lock()
-	if c.running {
+	if c.running{
 		c.runningMu.Unlock()
 		return
 	}
@@ -229,40 +245,28 @@ func (c *Cron) Run() {
 	c.run()
 }
 
-// run the scheduler.. this is private just due to the need to synchronize
-// access to the 'running' state variable.
-func (c *Cron) run() {
+func (c *Cron)run(){
 	c.logger.Info("start")
-
-	// Figure out the next activation times for each entry.
 	now := c.now()
-	for _, entry := range c.entries {
-		entry.Next = entry.Schedule.Next(now)
-		c.logger.Info("schedule", "now", now, "entry", entry.ID, "next", entry.Next)
+	for _, e := range c.entries{
+		e.Next = e.Schedule.Next(now)
+		c.logger.Info("schedule", "now", now, "entry", e.ID, "next", e.Next)
 	}
-
-	for {
-		// Determine the next entry to run.
+	for{
 		sort.Sort(byTime(c.entries))
-
 		var timer *time.Timer
-		if len(c.entries) == 0 || c.entries[0].Next.IsZero() {
-			// If there are no entries yet, just sleep - it still handles new entries
-			// and stop requests.
-			timer = time.NewTimer(100000 * time.Hour)
-		} else {
+		if len(c.entries) == 0 || c.entries[0].Next.IsZero(){
+			timer = time.NewTimer(10000 * time.Hour)
+		}else{
 			timer = time.NewTimer(c.entries[0].Next.Sub(now))
 		}
-
 		for {
-			select {
-			case now = <-timer.C:
+			select{
+			case now = <- timer.C:
 				now = now.In(c.location)
 				c.logger.Info("wake", "now", now)
-
-				// Run every entry whose next time was less than now
-				for _, e := range c.entries {
-					if e.Next.After(now) || e.Next.IsZero() {
+				for _, e := range c.entries{
+					if e.Next.After(now) || e.Next.IsZero(){
 						break
 					}
 					c.startJob(e.WrappedJob)
@@ -270,52 +274,39 @@ func (c *Cron) run() {
 					e.Next = e.Schedule.Next(now)
 					c.logger.Info("run", "now", now, "entry", e.ID, "next", e.Next)
 				}
-
-			case newEntry := <-c.add:
+			case newEntry := <- c.add:
 				timer.Stop()
 				now = c.now()
 				newEntry.Next = newEntry.Schedule.Next(now)
 				c.entries = append(c.entries, newEntry)
 				c.logger.Info("added", "now", now, "entry", newEntry.ID, "next", newEntry.Next)
-
-			case replyChan := <-c.snapshot:
-				replyChan <- c.entrySnapshot()
-				continue
-
-			case <-c.stop:
+			case <- c.stop:
 				timer.Stop()
 				c.logger.Info("stop")
 				return
-
-			case id := <-c.remove:
+			case replyChan := <- c.snapshot:
+				replyChan <- c.entrySnapshot()
+				continue
+			case id := <- c.remove:
 				timer.Stop()
 				now = c.now()
 				c.removeEntry(id)
 				c.logger.Info("removed", "entry", id)
 			}
-
 			break
 		}
 	}
 }
 
-// startJob runs the given job in a new goroutine.
-func (c *Cron) startJob(j Job) {
+func (c *Cron)startJob(j Job){
 	c.jobWaiter.Add(1)
-	go func() {
+	go func(){
 		defer c.jobWaiter.Done()
 		j.Run()
 	}()
 }
 
-// now returns current time in c location
-func (c *Cron) now() time.Time {
-	return time.Now().In(c.location)
-}
-
-// Stop stops the cron scheduler if it is running; otherwise it does nothing.
-// A context is returned so the caller can wait for running jobs to complete.
-func (c *Cron) Stop() context.Context {
+func (c *Cron)Stop()context.Context{
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
 	if c.running {
@@ -323,28 +314,9 @@ func (c *Cron) Stop() context.Context {
 		c.running = false
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
+	go func(){
 		c.jobWaiter.Wait()
 		cancel()
 	}()
 	return ctx
-}
-
-// entrySnapshot returns a copy of the current cron entry list.
-func (c *Cron) entrySnapshot() []Entry {
-	var entries = make([]Entry, len(c.entries))
-	for i, e := range c.entries {
-		entries[i] = *e
-	}
-	return entries
-}
-
-func (c *Cron) removeEntry(id EntryID) {
-	var entries []*Entry
-	for _, e := range c.entries {
-		if e.ID != id {
-			entries = append(entries, e)
-		}
-	}
-	c.entries = entries
 }
