@@ -8,11 +8,11 @@ import (
 
 	"github.com/go-macaron/binding"
 	"github.com/jakecoffman/cron"
-	"github.com/ouqiang/gocron/internal/models"
-	"github.com/ouqiang/gocron/internal/modules/logger"
-	"github.com/ouqiang/gocron/internal/modules/utils"
-	"github.com/ouqiang/gocron/internal/routers/base"
-	"github.com/ouqiang/gocron/internal/service"
+	"lixuancn/changbacron/internal/models"
+	"lixuancn/changbacron/internal/modules/logger"
+	"lixuancn/changbacron/internal/modules/utils"
+	"lixuancn/changbacron/internal/routers/base"
+	"lixuancn/changbacron/internal/service"
 	"gopkg.in/macaron.v1"
 )
 
@@ -214,7 +214,7 @@ func Remove(ctx *macaron.Context) string {
 	taskHostModel := new(models.TaskHost)
 	taskHostModel.Remove(id)
 
-	service.ServiceTask.Remove(id)
+	service.ServiceTask.Remove(taskModel.EntryID)
 
 	return json.Success(utils.SuccessContent, nil)
 }
@@ -260,7 +260,7 @@ func changeStatus(ctx *macaron.Context, status models.Status) string {
 	if status == models.Enabled {
 		addTaskToTimer(id)
 	} else {
-		service.ServiceTask.Remove(id)
+		service.ServiceTask.Remove(taskModel.EntryID)
 	}
 
 	return json.Success(utils.SuccessContent, nil)

@@ -61,6 +61,7 @@ type Task struct {
 	Created          time.Time            `json:"created" xorm:"datetime notnull created"`       // 创建时间
 	Deleted          time.Time            `json:"deleted" xorm:"datetime deleted"`               // 删除时间
 	BaseModel        `json:"-" xorm:"-"`
+	EntryID        int
 	Hosts            []TaskHostDetail `json:"hosts" xorm:"-"`
 	NextRunTime      time.Time        `json:"next_run_time" xorm:"-"`
 }

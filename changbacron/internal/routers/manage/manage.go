@@ -3,9 +3,9 @@ package manage
 import (
 	"encoding/json"
 
-	"github.com/ouqiang/gocron/internal/models"
-	"github.com/ouqiang/gocron/internal/modules/logger"
-	"github.com/ouqiang/gocron/internal/modules/utils"
+	"lixuancn/changbacron/internal/models"
+	"lixuancn/changbacron/internal/modules/logger"
+	"lixuancn/changbacron/internal/modules/utils"
 	"gopkg.in/macaron.v1"
 )
 

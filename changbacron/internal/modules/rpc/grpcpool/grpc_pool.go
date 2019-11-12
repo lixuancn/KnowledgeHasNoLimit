@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ouqiang/gocron/internal/modules/app"
-	"github.com/ouqiang/gocron/internal/modules/rpc/auth"
-	"github.com/ouqiang/gocron/internal/modules/rpc/proto"
+	"lixuancn/changbacron/internal/modules/app"
+	"lixuancn/changbacron/internal/modules/rpc/auth"
+	"lixuancn/changbacron/internal/modules/rpc/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
