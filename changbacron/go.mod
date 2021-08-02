@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/dgrijalva/jwt-go v3.2.1
 	github.com/go-gomail/gomail v0.0.0-20160411212932-81ebce5c23df
 	github.com/go-macaron/binding v1.0.0
 	github.com/go-macaron/gzip v0.0.0-20191101043656-b5609500c6fc
