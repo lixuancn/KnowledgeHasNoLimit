@@ -1,25 +1,55 @@
 package gee
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type HandlerFunc func(ctx *Context)
 
+type RouterGroup struct {
+	prefix      string
+	middlewares []HandlerFunc
+	parent      *RouterGroup
+	engine      *Engine
+}
+
 type Engine struct {
-	router *router
+	*RouterGroup //engine作为最上层的分组（根），所以拥有RouteGroup的所有能力
+	router       *router
+	groups       []*RouterGroup
 }
 
 func New() *Engine {
-	return &Engine{
+	engine := &Engine{
 		router: newRouter(),
 	}
+	engine.RouterGroup = &RouterGroup{engine: engine}
+	engine.groups = []*RouterGroup{engine.RouterGroup}
+	return engine
 }
 
-func (engine *Engine) GET(pattern string, handlerFunc HandlerFunc) {
-	engine.router.addRoute("GET", pattern, handlerFunc)
+func (group *RouterGroup) Group(prefix string) *RouterGroup {
+	engine := group.engine
+	newGroup := &RouterGroup{
+		prefix: prefix,
+		parent: group,
+		engine: engine,
+	}
+	engine.groups = append(engine.groups, newGroup)
+	return newGroup
 }
 
-func (engine *Engine) POST(pattern string, handlerFunc HandlerFunc) {
-	engine.router.addRoute("POST", pattern, handlerFunc)
+func (group *RouterGroup) addRoute(method, comp string, handlerFunc HandlerFunc) {
+	pattern := group.prefix + comp
+	group.engine.router.addRoute(method, pattern, handlerFunc)
+}
+
+func (group *RouterGroup) GET(pattern string, handlerFunc HandlerFunc) {
+	group.addRoute("GET", pattern, handlerFunc)
+}
+
+func (group *RouterGroup) POST(pattern string, handlerFunc HandlerFunc) {
+	group.addRoute("POST", pattern, handlerFunc)
 }
 
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
