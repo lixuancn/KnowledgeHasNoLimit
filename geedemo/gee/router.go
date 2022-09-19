@@ -78,11 +78,12 @@ func (r *router) getRoutes(method string) []*node {
 
 func (r *router) handle(ctx *Context) {
 	n, params := r.getRoute(ctx.Method, ctx.Path)
-	if n == nil {
+	if n != nil {
+		ctx.Params = params
+		key := ctx.Method + "-" + n.pattern
+		ctx.handlers = append(ctx.handlers, r.handlers[key])
+	} else {
 		ctx.NotFount()
-		return
 	}
-	ctx.Params = params
-	key := ctx.Method + "-" + n.pattern
-	r.handlers[key](ctx)
+	ctx.Next()
 }

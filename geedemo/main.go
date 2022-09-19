@@ -8,6 +8,7 @@ import (
 
 func main() {
 	server := gee.New()
+	server.Use(gee.Logger())
 	// curl "http://localhost:8888/"
 	server.GET("/", func(ctx *gee.Context) {
 		ctx.HTML(http.StatusOK, "This is Index")
@@ -35,6 +36,7 @@ func main() {
 		})
 	}
 	v2 := server.Group("/v2")
+	v2.Use(middlewaresV2())
 	{
 		// curl "http://localhost:8888/v2/hello/lane"
 		v2.GET("/hello/:name", func(ctx *gee.Context) {
@@ -48,5 +50,13 @@ func main() {
 	err := server.Run(":8888")
 	if err != nil {
 		panic(err)
+	}
+}
+
+func middlewaresV2() gee.HandlerFunc {
+	return func(ctx *gee.Context) {
+		fmt.Println("This is a middlewares for v2 group. start")
+		ctx.Next()
+		fmt.Println("This is a middlewares for v2 group. end")
 	}
 }
