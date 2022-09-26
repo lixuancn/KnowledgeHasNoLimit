@@ -9,9 +9,11 @@ import (
 func main() {
 	server := gee.New()
 	server.Use(gee.Logger())
+	server.LoadHTMLGlob("templates/*")
+	server.Static("/assets", "./static")
 	// curl "http://localhost:8888/"
 	server.GET("/", func(ctx *gee.Context) {
-		ctx.HTML(http.StatusOK, "This is Index")
+		ctx.HTML(http.StatusOK, "index.tmpl", "This is Index")
 	})
 	v1 := server.Group("/v1")
 	{
@@ -42,10 +44,9 @@ func main() {
 		v2.GET("/hello/:name", func(ctx *gee.Context) {
 			ctx.String(http.StatusOK, "hello %s, you're at %s\n", ctx.Param("name"), ctx.Path)
 		})
-		// curl "http://localhost:8888/v2/assets/css/geektutu.css"
-		v2.GET("/assets/*filepath", func(ctx *gee.Context) {
-			ctx.Json(http.StatusOK, gee.H{"filepath": ctx.Param("filepath")})
-		})
+		// curl "http://localhost:8888/v2/assets/js/geektutu.js"
+		v2.Static("/assets", "./static")
+		// 或相对路径 r.Static("/assets", "./static")
 	}
 	err := server.Run(":8888")
 	if err != nil {

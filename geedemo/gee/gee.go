@@ -2,7 +2,9 @@ package gee
 
 import (
 	"net/http"
+	"path"
 	"strings"
+	"text/template"
 )
 
 type HandlerFunc func(ctx *Context)
@@ -15,9 +17,11 @@ type RouterGroup struct {
 }
 
 type Engine struct {
-	*RouterGroup //engine作为最上层的分组（根），所以拥有RouteGroup的所有能力
-	router       *router
-	groups       []*RouterGroup
+	*RouterGroup  //engine作为最上层的分组（根），所以拥有RouteGroup的所有能力
+	router        *router
+	groups        []*RouterGroup
+	htmlTemplates *template.Template // for html render
+	funcMap       template.FuncMap   // for html render
 }
 
 func New() *Engine {
@@ -57,6 +61,25 @@ func (group *RouterGroup) Use(middlewares ...HandlerFunc) {
 	group.middlewares = append(group.middlewares, middlewares...)
 }
 
+func (group *RouterGroup) createStaticHandler(relativePath string, fs http.FileSystem) HandlerFunc {
+	absolutePath := path.Join(group.prefix, relativePath)
+	fileServer := http.StripPrefix(absolutePath, http.FileServer(fs))
+	return func(c *Context) {
+		file := c.Param("filepath")
+		if _, err := fs.Open(file); err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		fileServer.ServeHTTP(c.W, c.R)
+	}
+}
+
+func (group *RouterGroup) Static(relativePath string, root string) {
+	handler := group.createStaticHandler(relativePath, http.Dir(root))
+	urlPattern := path.Join(relativePath, "/*filepath")
+	group.GET(urlPattern, handler)
+}
+
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var middlewares []HandlerFunc
 	for _, group := range engine.groups {
@@ -66,6 +89,7 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := newContext(w, r)
 	ctx.handlers = middlewares
+	ctx.engine = engine
 	engine.router.handle(ctx)
 }
 
@@ -75,4 +99,12 @@ func (engine *Engine) Run(addr string) error {
 
 func (engine *Engine) handle(ctx *Context) {
 
+}
+
+func (engine *Engine) SetFuncMap(funcMap template.FuncMap) {
+	engine.funcMap = funcMap
+}
+
+func (engine *Engine) LoadHTMLGlob(pattern string) {
+	engine.htmlTemplates = template.Must(template.New("").Funcs(engine.funcMap).ParseGlob(pattern))
 }
