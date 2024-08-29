@@ -36,5 +36,5 @@ similar_words = model.wv.most_similar('科技', topn=5)
 print(similar_words)
 
 # 评估
-result = model.wv.evaluate_word_pairs('12_weibo_content_corpus/12_valid.tsv')
+result = model.wv.evaluate_word_pairs('12_valid.tsv')
 print(result)
