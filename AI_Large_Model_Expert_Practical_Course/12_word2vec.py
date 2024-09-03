@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 from gensim.models import Word2Vec
 
 # 微博语料库 http://www.nlpir.org/wordpress/2017/12/03/nlpir%E5%BE%AE%E5%8D%9A%E5%86%85%E5%AE%B9%E8%AF%AD%E6%96%99%E5%BA%93-23%E4%B8%87%E6%9D%A1/
-file_path = '12_weibo_content_corpus/data.xml'
+file_path = '12_data/data.xml'
 tree = ET.parse(file_path)
 root = tree.getroot()
 
@@ -26,10 +26,10 @@ for text in texts:
 
 # 模型训练
 model = Word2Vec(sentences=processed_texts, vector_size=100, window=5, min_count=1, workers=4, sg=1)
-model.save('./12_weibo_content_corpus/12_word2vec.model')
+model.save('./12_data/12_word2vec.model')
 
 # 使用模型
-model = Word2Vec.load("./12_weibo_content_corpus/12_word2vec.model")
+model = Word2Vec.load("./12_data/12_word2vec.model")
 print(model.wv['科技'])
 
 similar_words = model.wv.most_similar('科技', topn=5)
