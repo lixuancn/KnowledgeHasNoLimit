@@ -29,9 +29,9 @@ class TextDataset(Dataset):
         self.int_to_word = {i: word for i, word in enumerate(self.vocab)}
 
         # 将映射关系保存为JSON文件
-        with open('16_data/word_to_int.json', 'w') as f:
+        with open('../excluded_folders/16_data/word_to_int.json', 'w') as f:
             json.dump(self.word_to_int, f, ensure_ascii=False, indent=4)
-        with open('16_data/int_to_word.json', 'w') as f:
+        with open('../excluded_folders/16_data/int_to_word.json', 'w') as f:
             json.dump(self.int_to_word, f, ensure_ascii=False, indent=4)
 
         # 将所有单词转换为对应的整数索引，形成数据列表
@@ -119,7 +119,7 @@ def training():
                 print(f'Epoch [{epoch + 1}/{num_epochs}], Step [{i + 1}/{len(dataloader)}], Loss: {loss.item()}')
 
     # 保存模型到指定路径
-    model_path = "16_data/transformer_model.pth"
+    model_path = "../excluded_folders/16_data/transformer_model.pth"
     torch.save(model, model_path)
     print('模型已保存到', model_path)
 
