@@ -1,12 +1,12 @@
 # 导入所需库
-import torch
 import json
 import jieba
-
+import torch
+import lesson16_transformerDecoderModel
 
 def load_model(model_path):
     # 加载模型到CPU
-    model = torch.load(model_path, map_location=torch.device('cpu'))
+    model = torch.load(model_path, map_location=torch.device('cpu'), weights_only=False)
     # 设置为评估模式
     model.eval()
     return model
@@ -42,14 +42,16 @@ def predict(model, initial_seq, max_len=50):
 
 
 def generate(model, input_sentence, max_len=50):
-    # 使用结巴分词对输入句子进行分词
+    # 使用jieba分词对输入句子进行分词
     input_words = list(jieba.cut(input_sentence.strip()))
     # 加载单词到数字的映射
     word_to_int = load_vocab('16_data/word_to_int.json')
     # 将单词转换为索引
     input_seq = [word_to_int.get(word, len(word_to_int) - 1) for word in input_words]
+    print("input_seq:", input_seq)
     # 生成文本
     generated_text = predict(model, input_seq, max_len)
+    print("generated_text:", generated_text)
     # 将生成的单词列表合并为字符串
     return "".join(generated_text)
 
