@@ -121,6 +121,10 @@ def training():
     # 保存模型到指定路径
     model_path = "../excluded_folders/16_data/transformer_model.pth"
     torch.save(model, model_path)
-    print('模型已保存到', model_path)
+    print('模型（保存权重和架构（模型的结构））已保存到', model_path)
+
+    model_path = "../excluded_folders/16_data/transformer_model_state_dict.pth"
+    torch.save(model.state_dict(), model_path)
+    print('模型（只保存权重）已保存到', model_path)
 
 training()
