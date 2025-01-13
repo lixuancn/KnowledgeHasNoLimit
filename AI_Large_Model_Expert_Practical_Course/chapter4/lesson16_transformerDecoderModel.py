@@ -11,10 +11,13 @@ class TransformerDecoderModel(nn.Module):
         self.positional_encoding = nn.Parameter(torch.randn(embed_size).unsqueeze(0))
         # 定义一个Transformer解码器层
         decoder_layer = nn.TransformerDecoderLayer(d_model=embed_size, nhead=num_heads, dim_feedforward=hidden_dim)
+        print("TransformerDecoderModel参数默认值长度：[", len(decoder_layer.self_attn.in_proj_weight), ",",
+              len(decoder_layer.self_attn.in_proj_weight[0]), "]值为", decoder_layer.self_attn.in_proj_weight)
         # 堆叠多个解码器层构成完整的解码器
         self.transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
         # 定义输出层，将解码器输出转换回词汇空间
         self.fc = nn.Linear(embed_size, vocab_size)
+
 
     def forward(self, src):
         # 嵌入输入并添加位置编码
