@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "achievement": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with",
+        "mcp[cli]",
+        "--with-editable",
+        "/Users/bytedance/www/lanecn/KnowledgeHasNoLimit/xingyunyang01_geek02/achievement",
+        "mcp",
+        "run",
+        "/Users/bytedance/www/lanecn/KnowledgeHasNoLimit/xingyunyang01_geek02/achievement/server.py"
+      ],
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
