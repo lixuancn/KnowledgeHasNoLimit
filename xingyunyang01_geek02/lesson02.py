@@ -86,7 +86,7 @@ if __name__ == "__main__":
     query = "青岛啤酒和贵州茅台收盘价哪个贵？"
     prompt = REACT_PROMPT.format(instructions=instructions, tools=tools, tool_names="get_closing_price", input=query)
     messages = [{"role": "user", "content": prompt}]
-
+    print(messages)
     while True:
         response = send_messages(messages)
         response_text = response.choices[0].message.content
