@@ -22,7 +22,7 @@ def load_vocab(json_file):
 
 def predict(model, initial_seq, max_len=50):
     # 加载数字到单词的映射
-    int_to_word = load_vocab('../excluded_folders/16_data/int_to_word.json')
+    int_to_word = load_vocab('../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/int_to_word.json')
     # 确保模型处于评估模式
     model.eval()
     # 关闭梯度计算
@@ -45,7 +45,7 @@ def generate(model, input_sentence, max_len=50):
     # 使用jieba分词对输入句子进行分词
     input_words = list(jieba.cut(input_sentence.strip()))
     # 加载单词到数字的映射
-    word_to_int = load_vocab('../excluded_folders/16_data/word_to_int.json')
+    word_to_int = load_vocab('../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/word_to_int.json')
     # 将单词转换为索引
     input_seq = [word_to_int.get(word, len(word_to_int) - 1) for word in input_words]
     print("input_seq:", input_seq)
@@ -60,7 +60,7 @@ def main():
     # 定义输入提示
     prompt = "hello"
     # 加载模型
-    model = load_model('../excluded_folders/16_data/transformer_model.pth')
+    model = load_model('../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/transformer_model.pth')
     # 生成文本
     completion = generate(model, prompt)
     # 打印生成的文本

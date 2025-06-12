@@ -29,9 +29,9 @@ class TextDataset(Dataset):
         self.int_to_word = {i: word for i, word in enumerate(self.vocab)}
 
         # 将映射关系保存为JSON文件
-        with open('../excluded_folders/16_data/word_to_int.json', 'w') as f:
+        with open('../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/word_to_int.json', 'w') as f:
             json.dump(self.word_to_int, f, ensure_ascii=False, indent=4)
-        with open('../excluded_folders/16_data/int_to_word.json', 'w') as f:
+        with open('../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/int_to_word.json', 'w') as f:
             json.dump(self.int_to_word, f, ensure_ascii=False, indent=4)
 
         # 将所有单词转换为对应的整数索引，形成数据列表
@@ -58,7 +58,7 @@ class TextDataset(Dataset):
 def training():
     # 加载数据集
     print("加载数据集")
-    dataset = TextDataset('../excluded_folders/16_data/wiki_zh_sentence_head10.txt')
+    dataset = TextDataset('../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/wiki_zh_sentence_head10.txt')
     print(dataset.__getitem__(5))
 
     batch_size=1
@@ -119,11 +119,11 @@ def training():
                 print(f'Epoch [{epoch + 1}/{num_epochs}], Step [{i + 1}/{len(dataloader)}], Loss: {loss.item()}')
 
     # 保存模型到指定路径
-    model_path = "../excluded_folders/16_data/transformer_model.pth"
+    model_path = "../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/transformer_model.pth"
     torch.save(model, model_path)
     print('模型（保存权重和架构（模型的结构））已保存到', model_path)
 
-    model_path = "../excluded_folders/16_data/transformer_model_state_dict.pth"
+    model_path = "../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/transformer_model_state_dict.pth"
     torch.save(model.state_dict(), model_path)
     print('模型（只保存权重）已保存到', model_path)
 

@@ -17,7 +17,7 @@ for input_batch in calibration_dataset:
 model_int8 = torch.quantization.convert(model_fp32_prepared)
 
 # 保存
-torch.save(model_int8.state_dict(), '../excluded_folders/16_data/transformer_model_quantization_int8.pth')
+torch.save(model_int8.state_dict(), '../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/transformer_model_quantization_int8.pth')
 
 
 # 动态量化
@@ -27,4 +27,4 @@ quantized_model = quantize_dynamic(
     {nn.Linear}, # 指定量化的层类型
     dtype=torch.qint8 # 指定量化的数据类型
 )
-torch.save(model_int8.state_dict(), '../excluded_folders/16_data/transformer_model_quantization_dynamic.pth')
+torch.save(model_int8.state_dict(), '../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/transformer_model_quantization_dynamic.pth')

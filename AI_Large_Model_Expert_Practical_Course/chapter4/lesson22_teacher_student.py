@@ -6,7 +6,7 @@ import lesson16_transformerDecoderModel
 from torch.utils.data import DataLoader
 
 # 知识蒸馏
-teacher_model = torch.load('../excluded_folders/16_data/transformer_model.pth', map_location=torch.device('cpu'), weights_only=False)
+teacher_model = torch.load('../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/transformer_model.pth', map_location=torch.device('cpu'), weights_only=False)
 teacher_model.eval()
 
 # 定义学生模型

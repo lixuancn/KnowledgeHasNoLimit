@@ -5,6 +5,7 @@ import os
 import json
 import os
 
+
 class PrepareData():
     @staticmethod
     def prepare(root_dir):
@@ -20,12 +21,13 @@ class PrepareData():
                         except json.JSONDecodeError:
                             print("格式不正确")
         print(len(ds))
-        with open('../excluded_folders/16_data/wiki_zh_sentence.txt', 'w') as file:
+        with open('../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/wiki_zh_sentence.txt', 'w') as file:
             for i in ds:
                 file.write(i + '\n')
         return ds
 
-data_set = PrepareData.prepare('/Users/bytedance/www/lanecn/KnowledgeHasNoLimit/AI_Large_Model_Expert_Practical_Course/excluded_folders/16_data/wiki_zh')
+
+data_set = PrepareData.prepare('/Users/bytedance/www/lanecn/KnowledgeHasNoLimit/excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/wiki_zh')
 for item in data_set:
     print(item)
     break

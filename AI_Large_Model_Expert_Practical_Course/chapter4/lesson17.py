@@ -2,7 +2,7 @@ import torch
 from torchviz import make_dot
 
 x = torch.randint(100, (50,))  # 假设一个序列长度为1的输入
-model = torch.load('../excluded_folders/16_data/transformer_model.pth', map_location=torch.device('cpu'), weights_only=False)
+model = torch.load('../../excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/transformer_model.pth', map_location=torch.device('cpu'), weights_only=False)
 # 设置为评估模式
 model.eval()
 y = model(x)
