@@ -27,7 +27,7 @@ class PrepareData():
         return ds
 
 
-data_set = PrepareData.prepare('/Users/bytedance/www/lanecn/KnowledgeHasNoLimit/excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/wiki_zh')
+data_set = PrepareData.prepare('~/www/lanecn/KnowledgeHasNoLimit/excluded_folders/AI_Large_Model_Expert_Practical_Course/16_data/wiki_zh')
 for item in data_set:
     print(item)
     break
