@@ -11,10 +11,10 @@ server_params = StdioServerParameters(
         "--with",
         "mcp[cli]",
         "--with-editable",
-        "/Users/bytedance/www/lanecn/KnowledgeHasNoLimit/xingyunyang01_geek02/achievement",
+        "~/www/lanecn/KnowledgeHasNoLimit/xingyunyang01_geek02/achievement",
         "mcp",
         "run",
-        "/Users/bytedance/www/lanecn/KnowledgeHasNoLimit/xingyunyang01_geek02/achievement/server.py"
+        "~/www/lanecn/KnowledgeHasNoLimit/xingyunyang01_geek02/achievement/server.py"
     ],
     env=None
 )

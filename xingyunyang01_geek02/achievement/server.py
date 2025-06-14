@@ -27,7 +27,7 @@ def get_score_by_name(name: str) -> str:
 @mcp.resource("file://info.md")
 def get_file() -> str:
     """读取info.md的内容，从而获取员工的信息，例如性别等"""
-    with open("/Users/bytedance/www/lanecn/KnowledgeHasNoLimit/xingyunyang01_geek02/achievement/info.md", "r",
+    with open("~/www/lanecn/KnowledgeHasNoLimit/xingyunyang01_geek02/achievement/info.md", "r",
               encoding="utf-8") as f:
         return f.read()
 

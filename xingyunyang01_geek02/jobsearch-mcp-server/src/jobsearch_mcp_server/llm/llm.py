@@ -12,9 +12,7 @@ class LLMClient:
         load_dotenv()
 
         client = OpenAI(
-            #api_key=os.getenv("AliDeep"),  
-            #base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-            api_key=os.getenv("deepseek"),
+            api_key=os.getenv("DEEPSEEK_API_KEY_TEST"),
             base_url="https://api.deepseek.com"
         )
 

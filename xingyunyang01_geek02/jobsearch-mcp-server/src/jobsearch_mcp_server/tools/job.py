@@ -23,7 +23,7 @@ class JobTools(LLMClient):
             
             self.logger.info(f"prompt: {prompt}")
 
-            #发送给 ds
+            # 发送给 ds
             response = LLMClient.send_messages(self,messages)
             response_text = response.choices[0].message.content
 

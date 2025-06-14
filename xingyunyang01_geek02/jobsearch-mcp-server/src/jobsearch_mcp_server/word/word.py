@@ -44,6 +44,6 @@ def _read_docx(file_path):
 
 
 if __name__ == "__main__":
-    file_path = "../zhangsan_resume.docx"
+    file_path = "../../excluded_folders/xingyunyang01_geek02/zhangsan_resume.docx"
     content = read_word_file(file_path)
     print(content)
