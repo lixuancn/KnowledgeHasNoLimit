@@ -1,4 +1,18 @@
 {
   "mcpServers": {
+    "jobsearch": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/bytedance/www/lanecn/KnowledgeHasNoLimit/xingyunyang01_geek02/jobsearch-mcp-server/src/jobsearch_mcp_server/",
+        "run",
+        "jobsearch-mcp-server"
+      ],
+      "alwaysAllow": [
+        "get_word_by_filepath",
+        "get_job_by_resume",
+        "get_joblist_by_expect_job"
+      ]
+    }
   }
 }
