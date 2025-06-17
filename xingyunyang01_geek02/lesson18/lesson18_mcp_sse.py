@@ -68,32 +68,25 @@ def search_nearby_pois(keywords: str, location: str) -> str:
     return "未找到符合条件的POI"
 
 
-def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlette:
-    """创建SSE的服务"""
-    sse = SseServerTransport("/messages/")
+app = Server("lixuan-amap-stdio")
+sse = SseServerTransport("/messages")
 
-    async def handle_sse(request: Request):
-        async with sse.connect_sse(request.scope, request.receive, request._send) as (read_stream, write_stream):
-            await mcp_server.run(read_stream, write_stream, mcp_server.create_initialization_options(),)
 
-    async def handle_messages(request: Request):
-        await sse.handle_post_message(request.scope, request.receive, request._send)
+async def handle_sse(scope, receive, send):
+    async with sse.connect_sse(scope, receive, send) as streams:
+        await app.run(streams[0], streams[1], app.create_initialization_options())
 
-    return Starlette(
-        debug=debug,
-        routes=[
-            Route("/sse", endpoint=handle_sse),
-            Route("/messages/", endpoint=handle_messages, methods=["POST"]),
-        ],
-    )
 
+async def handle_messages(scope, receive, send):
+    await sse.handle_post_message(scope, receive, send)
+
+
+starlette_app = Starlette(
+    routes=[
+        Route("/sse", endpoint=handle_sse),
+        Route("/messages", endpoint=handle_messages, methods=["POST"]),
+    ]
+)
 
 if __name__ == "__main__":
-    mcp_server = mcp._mcp_server
-    parser = argparse.ArgumentParser(description="Run MCP SSE-based server")
-    parser.add_argument('--host', default="0.0.0.0", help='Host to bind to')
-    parser.add_argument('--port', type=int, default=18080, help='Port to listen on')
-    args = parser.parse_args()
-    starlette_app = create_starlette_app(mcp_server, debug=True)
-    uvicorn.run(starlette_app, host=args.host, port=args.port)
-    # mcp.run(transport='sse')
+    mcp.run(transport='sse')
