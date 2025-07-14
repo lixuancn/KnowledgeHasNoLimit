@@ -23,6 +23,9 @@ def DeepSeek():
     )
 
 
+llm = DeepSeek()
+
+
 class State(TypedDict):
     models: list[str]
 
@@ -80,9 +83,8 @@ SYSTEM
 HUMAN
 模型或数据表信息：{question}
 """
-    llm = DeepSeek()
     vec_store = QdrantVecStore(collection_name="data")
-    retriver = vec_store.as_retriever(search_kwargs={"k":5})
+    retriver = vec_store.as_retriever(search_kwargs={"k": 5})
     print("retriver: ", retriver)
     prompt = ChatPromptTemplate.from_template(prompt)
     print("prompt: ", prompt)
@@ -90,6 +92,7 @@ HUMAN
     chain = {"context": retriver | format_docs,
              "question": RunnablePassthrough()} | prompt | llm | StrOutputParser()
     ret = chain.invoke(query)
+    print("ret: ", ret)
     return ret
 
 
@@ -113,6 +116,7 @@ models_prompt = """
 tools = [modelsTool]
 llm_withTools = DeepSeek().bind_tools(tools)
 tools_names = {tool.name: tool for tool in tools}
+
 
 def models_node(state):
     message = llm_withTools.invoke([SystemMessage(content=systemMessage), HumanMessage(content=models_prompt)])
