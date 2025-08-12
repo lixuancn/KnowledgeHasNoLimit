@@ -1,3 +1,6 @@
+import os
+import re
+
 import pandas as pd
 import akshare as ak
 import asyncio
@@ -80,13 +83,48 @@ def save_all_date():
     codes = get_all_codes()
     print(f"共获取到{len(codes)}个股票代码，开始分组处理...")
     # 将股票代码分成每组100个
-    group_size = 500
+    group_size = 100
     groups = [codes[i:i+group_size] for i in range(0, len(codes), group_size)]
-    
+
     # 遍历每个组并调用save_data
     for i, group in enumerate(groups):
         print(f"正在处理第{i+1}/{len(groups)}组，共{len(group)}个股票代码")
         asyncio.run(save_data(group, "20230101", "20250812", i))
+
+
+def load_df(file: str) -> pd.DataFrame:
+    df = pd.read_csv("../excluded_folders/xingyunyang01_geek02/lesson31/{}".format(file))
+    if df.empty:
+        raise Exception("文件不存在")
+    df['日期'] = pd.to_datetime(df['日期'])
+    df['股票代码'] = df['股票代码'].astype(str)
+    return df
+
+def concat_csv(file_name: str):
+    folder_path = '../excluded_folders/xingyunyang01_geek02/lesson31/'
+    # 列出文件夹中的所有文件和目录
+    files = os.listdir(folder_path)
+    # 定义一个正则表达式，匹配以数字开头的文件名
+    pattern = re.compile(r'^\d+_.+\.csv$')
+    # 遍历文件，筛选出符合条件的文件名
+    filtered_files = [file for file in files if pattern.match(file)]
+    ret = pd.DataFrame()
+    # 打印结果
+    for file in filtered_files:
+        df = load_df(file)
+        ret = pd.concat([ret, df])
+    ret.to_csv("../excluded_folders/xingyunyang01_geek02/lesson31/".format(file_name))
+    print("合并完成,文件名是{}".format(file_name))
+
+def join_csv(file1:str, file2:str):
+    cols = ['股票代码','日期','收盘']
+    df1 = load_df(file1).loc[:, cols]
+    df2 = load_df(file2).loc[:, cols]
+    df = pd.concat([df1, df2], axis=0)
+    df.sort_values(['股票代码', '日期'], ascending=False, inplace=True)
+    df.drop_duplicates(subset=['股票代码', '日期'], keep='first', inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    print(df)
 
 if __name__ == "__main__":
     # 调用新函数保存所有数据
