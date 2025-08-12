@@ -66,9 +66,6 @@ def get_all_codes() -> list[str]:
     list[str]: 符合条件的股票代码列表
     """
     # 获取所有A股实时数据
-    ak.set_request_header({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
-    })
     df = ak.stock_zh_a_spot_em()
     # 筛选代码以60、30、00或68开头的股票
     mask = df['代码'].str.startswith(('60', '30', '00', '68'))
@@ -82,7 +79,6 @@ def save_all_date():
     # 获取所有符合条件的股票代码
     codes = get_all_codes()
     print(f"共获取到{len(codes)}个股票代码，开始分组处理...")
-    return
     # 将股票代码分成每组100个
     group_size = 500
     groups = [codes[i:i+group_size] for i in range(0, len(codes), group_size)]
