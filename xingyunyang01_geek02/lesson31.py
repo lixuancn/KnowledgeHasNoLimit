@@ -29,6 +29,8 @@ async def load_data(symbol: str, start_date: str, end_date: str):
         )
     )
     # 将日期列转换为datetime类型并设置为索引
+    if df.empty or df['日期'].empty:
+        return pd.DataFrame()
     df['日期'] = pd.to_datetime(df['日期'])
     # 按日期倒序排列并设置日期为索引
     df.set_index('日期', inplace=True)
@@ -88,6 +90,8 @@ def save_all_date():
 
     # 遍历每个组并调用save_data
     for i, group in enumerate(groups):
+        if i < 50:
+            continue
         print(f"正在处理第{i+1}/{len(groups)}组，共{len(group)}个股票代码")
         asyncio.run(save_data(group, "20230101", "20250812", i))
 
@@ -113,7 +117,7 @@ def concat_csv(file_name: str):
     for file in filtered_files:
         df = load_df(file)
         ret = pd.concat([ret, df])
-    ret.to_csv("../excluded_folders/xingyunyang01_geek02/lesson31/".format(file_name))
+    ret.to_csv("../excluded_folders/xingyunyang01_geek02/lesson31/{}".format(file_name))
     print("合并完成,文件名是{}".format(file_name))
 
 def join_csv(file1:str, file2:str):
@@ -128,4 +132,6 @@ def join_csv(file1:str, file2:str):
 
 if __name__ == "__main__":
     # 调用新函数保存所有数据
-    save_all_date()
+    # save_all_date()
+    # 合并多个csv
+    concat_csv("total_20230101_20250812.csv")
