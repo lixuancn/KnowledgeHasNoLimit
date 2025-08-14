@@ -1,6 +1,7 @@
 import akshare as ak
 import numpy as np
 import pandas as pd
+from langchain_core.tools import tool
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 
@@ -18,7 +19,16 @@ def load_df(file: str) -> pd.DataFrame:
     df['股票代码'] = df['股票代码'].astype(str)
     return df
 
+@tool
 def analyze_stocks(stock_codes: list[str], start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    根据股票代码列表获取股票的起始价格，结束价格，区间涨跌幅，最大回撤，年化波动率
+
+    Parameters:
+    -----------
+    stock_codes : list
+        股票代码列表
+    """
     # 先筛选出来指定的代码、指定时间范围的记录
     df = load_df('../excluded_folders/xingyunyang01_geek02/lesson31/total_20230101_20250812.csv')
     # 转换日期格式
@@ -107,12 +117,59 @@ def analyze_stocks(stock_codes: list[str], start_date: str, end_date: str) -> pd
     plt.close()
     return results
 
+@tool
+def get_financial_report(stock_codes: list[str]):
+     """
+    根据股票代码列表获取财报数据
+
+    Parameters:
+    -----------
+    stock_codes : list
+        股票代码列表
+
+    Returns:
+    --------
+    dict
+        包含每个股票代码对应的财报数据的字典
+    """
+     # 读取CSV文件
+     df = pd.read_csv('../excluded_folders/xingyunyang01_geek02/lesson32/financial_report.csv')
+     print("从本地文件读取数据成功")
+     # 确保股票代码列是字符串类型
+     df['股票代码'] = df['股票代码'].astype(str).str.zfill(6)
+     # 创建结果字典
+     result = {}
+     # 为每个股票代码获取数据
+     for code in stock_codes:
+         # 确保股票代码格式一致（6位数字）
+         code = str(code).zfill(6)
+         # 筛选该股票的数据
+         stock_data = df[df['股票代码'] == code]
+         if not stock_data.empty:
+             # 将数据转换为字典格式，包含列名
+             result[code] = {
+                 'data': stock_data.to_dict('records')
+             }
+         else:
+             result[code] = {
+                 'data': []
+             }
+     return result
+
 if __name__ == '__main__':
     # 示例使用
     try:
         stock_codes = ['000333', '600600','300054','600698','600573']  # 可以替换为您想要分析的股票代码列表
-        results = analyze_stocks(stock_codes, '2025-01-01', '2025-07-31')
+        # results = analyze_stocks(stock_codes, '2025-01-01', '2025-07-31')
+        results = get_financial_report(stock_codes)
         print("\n分析结果:")
         print(results)
+        if results:
+            # 打印结果
+            for code, data in results.items():
+                print(f"\n股票代码: {code}")
+                print("数据内容:")
+                for row in data['data']:
+                    print(row)
     except Exception as e:
         print(f"错误: {str(e)}")
