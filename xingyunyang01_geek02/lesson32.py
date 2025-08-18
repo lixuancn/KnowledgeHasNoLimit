@@ -1,10 +1,14 @@
 import akshare as ak
 import numpy as np
 import pandas as pd
+from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
+from langgraph.graph import MessagesState, StateGraph, START, END
 from matplotlib import pyplot as plt
 import matplotlib as mpl
-
+import os
+from langchain_openai import ChatOpenAI
+from typing_extensions import Literal
 
 #保存财报数据
 def save_financial_report(report_date):
@@ -156,20 +160,134 @@ def get_financial_report(stock_codes: list[str]):
              }
      return result
 
+def DeepSeekV3():
+    return ChatOpenAI(
+        model= "deepseek-chat",
+        api_key= os.environ.get("DEEPSEEK_API_KEY_TEST"),
+        base_url="https://api.deepseek.com",
+    )
+
+def Tongyi():
+    return ChatOpenAI(
+        model="qwen-max",
+        api_key=os.environ.get("TONGYI_API_KEY"),  # 自行搞定  你的秘钥
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+    )
+
+def DeepSeekR1():
+    return ChatOpenAI(
+        model= "deepseek-reasoner",
+        api_key= os.environ.get("DEEPSEEK_API_KEY_TEST"),
+        base_url="https://api.deepseek.com",
+    )
+
+tools = [get_financial_report, analyze_stocks]
+tools_by_name = {tool.name: tool for tool in tools}
+deepseek_r1 = DeepSeekR1()
+deepseek_v3 = DeepSeekV3()
+llm_with_tools = deepseek_r1.bind_tools(tools)
+
+class State(MessagesState):
+    plan: str
+
+PLAN_PROMPT = '''
+你是一个金融分析师，擅长使用工具对股票，上市公司财报等进行分析。请为用户提出的问题创建分析方案步骤：
+
+可调用工具列表：
+get_financial_report:
+    根据股票代码列表获取财报数据
+    
+    Parameters:
+    -----------
+    stock_codes : list
+        股票代码列表
+    
+    Returns:
+    --------
+    dict
+        包含每个股票代码对应的财报数据的字典
+
+analyze_stocks:
+   根据股票代码列表获取股票的起始价格，结束价格，区间涨跌幅，最大回撤，年化波动率
+    
+    Parameters:
+    -----------
+    stock_codes : list
+        股票代码列表
+
+    Returns:
+    --------
+    DataFrame
+        包含每个股票代码对应的起始价格，结束价格，区间涨跌幅，最大回撤，年化波动率
+
+要求：
+1.用中文列出清晰步骤
+2.每个步骤标记序号
+3.明确说明需要分析和执行的内容
+4.只需输出计划内容，不要做任何额外的解释和说明
+5.设计的方案步骤要紧紧贴合我的工具所能返回的内容，不要超出工具返回的内容
+'''
+
+def plan_node(state: State):
+    prompt = PLAN_PROMPT
+    response = deepseek_r1.invoke([SystemMessage(content=prompt), state["messages"][0]])
+    state["plan"] = response.content
+    print(state)
+    return state
+
+def llm_call(state: State):
+    messages = [SystemMessage(content=f"""你是一个思路清晰，有条理的金融分析师，必须严格按照以下金融分析计划执行： 
+    当前金融分析计划：
+    {state["plan"]}
+    
+    如果你认为计划已经执行到最后一步了，请在内容的末尾加上\nFinal Answer字样
+    
+    示例：
+    分析报告xxxxxxxx
+    Final Answer
+    """)] + state['messages']
+
+    print("------messages[-1]-------")
+    print(state["messages"][-1])
+    print("------------------")
+
+    response = llm_with_tools.invoke(messages)
+    state['messages'].append(response)
+    return state
+
+def tool_node(state):
+    """Performs the tool call"""
+    for tool_call in state["messages"][-1].tool_calls:
+        tool = tools_by_name[tool_call["name"]]
+        observation = tool.invoke(tool_call["args"])
+        # 将观察结果转换为字符串格式
+        if isinstance(observation, list):
+            # 如果是列表，将其转换为字符串表示
+            observation = str(observation)
+        state["messages"].append(ToolMessage(content=observation, tool_call_id=tool_call["id"]))
+    return state
+
+
+def should_continue(state: State) -> Literal["environment", "END"]:
+    message = state['messages']
+    last_message = message[-1]
+    if "Final Answer" in last_message.content:
+        return "END"
+    return "Action"
+
+
 if __name__ == '__main__':
-    # 示例使用
-    try:
-        stock_codes = ['000333', '600600','300054','600698','600573']  # 可以替换为您想要分析的股票代码列表
-        # results = analyze_stocks(stock_codes, '2025-01-01', '2025-07-31')
-        results = get_financial_report(stock_codes)
-        print("\n分析结果:")
-        print(results)
-        if results:
-            # 打印结果
-            for code, data in results.items():
-                print(f"\n股票代码: {code}")
-                print("数据内容:")
-                for row in data['data']:
-                    print(row)
-    except Exception as e:
-        print(f"错误: {str(e)}")
+    agent_builder = StateGraph(State)
+    agent_builder.add_node("plan_node", plan_node)
+    agent_builder.add_node("llm_call", llm_call)
+    agent_builder.add_node("environment", tool_node)
+
+    agent_builder.add_edge(START, "plan_node")
+    agent_builder.add_edge("plan_node", "llm_call")
+    agent_builder.add_conditional_edges("llm_call", should_continue, {"Action":"environment", "END":END})
+    agent_builder.add_edge("environment", "llm_call")
+    agent = agent_builder.compile()
+
+    messages = [HumanMessage(content="对比一下 '000333', '600600', '002461', '000729', '600573' 这四只股票的股价表现和财务情况，哪家更值得投资")]
+    ret = agent.invoke({"plan": "", "messages": messages})
+    print(ret["messages"][-1].content)
