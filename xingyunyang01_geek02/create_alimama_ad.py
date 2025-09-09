@@ -48,7 +48,7 @@ def create_order(budget: int, roi:float, product_id: int, adv_id: int):
     roi: float ROI目标
     product_id: int 商品id
     """
-    print(f"创建了一个预算{budget}, ROI目标{roi}, 商品ID是{product_id}, 抖音号是{adv_id}, ad_id=111111111")
+    print(f"创建了一个预算{budget}, ROI目标{roi}, 商品ID是{product_id}, 广告主ID是{adv_id}, ad_id=111111111")
     return 'success'
 
 tools = [create_order, get_adv_id, get_product_id]
@@ -63,17 +63,17 @@ def llm_call(state: MessagesState):
 
     你可以使用的工具有：
     1. get_product_id 获取可以投广的商品ID
-    2. get_adv_id 获取可投广的抖音号ID
+    2. get_adv_id 获取可投广的广告主ID
     3. create_order 创建广告计划
 
     如果你认为结束了，可以在结尾街上"\nFinal Answer" 字样
     """
     messages = [SystemMessage(content=systemMessage)] + state['messages']
 
-    print("------messages[-1]-------")
-    print(state["messages"])
-    print(state["messages"][-1])
-    print("------------------")
+    # print("------messages[-1]-------")
+    # print(state["messages"])
+    # print(state["messages"][-1])
+    # print("------------------")
     response = llm_with_tools.invoke(messages)
     state['messages'].append(response)
     return state
@@ -82,6 +82,7 @@ def tool_node(state):
     for tool_call in state["messages"][-1].tool_calls:
         tool = tools_names[tool_call["name"]]
         observation = tool.invoke(tool_call["args"])
+        print(f"调用工具{tool.name}, 参数{tool_call['args']}, 结果{observation}")
         # 将观察结果转换为字符串格式
         if isinstance(observation, list):
             # 如果是列表，将其转换为字符串表示
