@@ -38,7 +38,7 @@ def get_adv_id() -> int:
 
 
 @tool
-def create_order(budget: int, roi:float, product_id: int, adv_id: int):
+def create_ad(budget: int, roi:float, product_id: int, adv_id: int):
     """
     创建一个阿里妈妈新广告计划的工具。
 
@@ -51,7 +51,7 @@ def create_order(budget: int, roi:float, product_id: int, adv_id: int):
     print(f"创建了一个预算{budget}, ROI目标{roi}, 商品ID是{product_id}, 广告主ID是{adv_id}, ad_id=111111111")
     return 'success'
 
-tools = [create_order, get_adv_id, get_product_id]
+tools = [create_ad, get_adv_id, get_product_id]
 llm = DeepSeek()
 llm_with_tools = llm.bind_tools(tools)
 tools_names = {tool.name: tool for tool in tools}
@@ -64,16 +64,16 @@ def llm_call(state: MessagesState):
     你可以使用的工具有：
     1. get_product_id 获取可以投广的商品ID
     2. get_adv_id 获取可投广的广告主ID
-    3. create_order 创建广告计划
+    3. create_ad 创建广告计划
 
     如果你认为结束了，可以在结尾街上"\nFinal Answer" 字样
     """
     messages = [SystemMessage(content=systemMessage)] + state['messages']
 
-    # print("------messages[-1]-------")
+    print("------messages[-1]-------")
     # print(state["messages"])
-    # print(state["messages"][-1])
-    # print("------------------")
+    print(state["messages"][-1])
+    print("------------------")
     response = llm_with_tools.invoke(messages)
     state['messages'].append(response)
     return state
