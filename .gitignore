@@ -2,3 +2,4 @@
 vendor
 ./main.go
 excluded_folders/
+stock_agent/
