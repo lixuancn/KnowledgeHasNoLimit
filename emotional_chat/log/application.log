@@ -1,0 +1,9 @@
+2026-02-04 17:35:14,877 - backend.evaluation_engine - INFO - ✓ 评估引擎初始化成功
+2026-02-04 17:35:26,557 - httpx - INFO - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-04 17:35:38,332 - httpx - INFO - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-04 17:35:38,335 - backend.evaluation_engine - INFO - 评估 Prompt: 简短回应
+2026-02-04 17:35:46,827 - httpx - INFO - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-04 17:35:46,833 - backend.evaluation_engine - INFO - 评估 Prompt: 共情回应
+2026-02-04 17:35:56,237 - httpx - INFO - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-02-04 17:35:56,242 - backend.evaluation_engine - INFO - 评估 Prompt: 建议型回应
+2026-02-04 17:36:06,271 - httpx - INFO - HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
