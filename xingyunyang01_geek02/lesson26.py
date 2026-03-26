@@ -31,7 +31,7 @@ class State(TypedDict):
 
 
 def TongyiEmbedding()->DashScopeEmbeddings:
-    api_key = os.environ.get("TONGYI_API_KEY")
+    api_key = os.environ.get("ALIYUN_TONGYI_QWEN_API_KEY")
     return DashScopeEmbeddings(dashscope_api_key=api_key, model="text-embedding-v1")
 
 

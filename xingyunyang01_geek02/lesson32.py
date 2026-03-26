@@ -170,7 +170,7 @@ def DeepSeekV3():
 def Tongyi():
     return ChatOpenAI(
         model="qwen-max",
-        api_key=os.environ.get("TONGYI_API_KEY"),  # 自行搞定  你的秘钥
+        api_key=os.environ.get("ALIYUN_TONGYI_QWEN_API_KEY"),  # 自行搞定  你的秘钥
         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
     )
 
