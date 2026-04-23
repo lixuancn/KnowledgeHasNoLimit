@@ -24,9 +24,12 @@ until the model decides to stop. Production agents layer
 policy, hooks, and lifecycle controls on top.
 """
 
-import os
-import subprocess
 import llm
+from dotenv import load_dotenv
+from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
+from constant import TODO_REMINDER, WORKDIR
+from tool import PARENT_TOOLS, TOOL_HANDLERS
+from skill import SKILL_LOADER
 
 try:
     import readline
@@ -38,67 +41,51 @@ try:
 except ImportError:
     pass
 
-from dotenv import load_dotenv
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
-
 load_dotenv(override=True)
+SYSTEM = f"""You are a coding agent at {WORKDIR}. Use bash to solve tasks. Act, don't explain.
+Skills available:
+{SKILL_LOADER.get_descriptions()}"""
 
-SYSTEM = f"You are a coding agent at {os.getcwd()}. Use bash to solve tasks. Act, don't explain."
 
-TOOLS = [{
-    "type": "function",
-    "function": {
-        "name": "bash",
-        "description": "Run a shell command.",
-        "parameters": {
-            "type": "object",
-            "properties": {"command": {"type": "string"}},
-            "required": ["command"],
-        },
-    },
-}]
+
 
 client = llm.LLM().ChatOpenAI()
-client_with_tools = client.bind_tools(TOOLS).bind(max_tokens=8000)
-
-def run_bash(command: str) -> str:
-    dangerous = ["rm -rf /", "sudo", "shutdown", "reboot", "> /dev/"]
-    if any(d in command for d in dangerous):
-        return "Error: Dangerous command blocked"
-    try:
-        r = subprocess.run(command, shell=True, cwd=os.getcwd(),
-                           capture_output=True, text=True, timeout=120)
-        out = (r.stdout + r.stderr).strip()
-        return out[:50000] if out else "(no output)"
-    except subprocess.TimeoutExpired:
-        return "Error: Timeout (120s)"
-    except (FileNotFoundError, OSError) as e:
-        return f"Error: {e}"
+client_with_tools = client.bind_tools(PARENT_TOOLS).bind(max_tokens=8000)
 
 
 # -- The core pattern: a while loop that calls tools until the model stops --
 def agent_loop(messages: list):
-    round = 0
+    rounds = 0
+    rounds_without_todo = 0
     while True:
-        print(f"第{round}轮，messages:", messages)
-        round += 1
+        rounds += 1
         response = client_with_tools.invoke(messages)
-        print(f"第{round}轮，response:", response)
+        print(f"主体第{rounds}轮。大模型响应：content={response.content}")
         messages.append(response)
         if not response.tool_calls:
             return
         for tool_call in response.tool_calls:
             tool_name = tool_call["name"]
             tool_args = tool_call["args"]
-            if tool_name == "bash":
-                command = tool_args["command"]
-                print(f"\033[33m$ {command}\033[0m")
-                output = run_bash(command)
-                print(output[:200])
-                messages.append(ToolMessage(content=output, tool_call_id=tool_call["id"]))
+            print(f"主体第{rounds}轮。工具调用：{tool_name}({tool_args})")
+            handler = TOOL_HANDLERS.get(tool_name)
+            if handler is None:
+                output = f"Error: Unknown tool '{tool_name}'"
+            else:
+                print(f"\033[33m$ 主体第{rounds}轮。执行工具：{tool_name}({tool_args})\033[0m")
+                output = handler(**tool_args)
+                print(f"主体第{rounds}轮。工具结果：{output[:200]}")
+            if tool_name == 'todo':
+                rounds_without_todo = 0
+            else:
+                rounds_without_todo += 1
+            messages.append(ToolMessage(content=output, tool_call_id=tool_call["id"]))
+        if rounds_without_todo >= 3:
+            messages.append(HumanMessage(content=TODO_REMINDER))
+            print(f"主体第{rounds}轮。已注入 todo reminder")
+            rounds_without_todo = 0
 
 if __name__ == "__main__":
-    history = [SystemMessage(content=SYSTEM)]
     while True:
         try:
             query = input("\033[36ms01 >> \033[0m")
@@ -106,7 +93,8 @@ if __name__ == "__main__":
             break
         if query.strip().lower() in ("q", "exit", ""):
             break
-        history.append(HumanMessage(content=query))
+        history = [SystemMessage(content=SYSTEM), HumanMessage(content=query)]
+        print(f"进入核心循环的消息：{history}")
         agent_loop(history)
         response_content = history[-1].content
         print(f"最终结果：{response_content}")
