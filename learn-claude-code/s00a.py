@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Harness: the loop -- the model's first connection to the real world.
+from compact import auto_compact, micro_compact, should_compact
 """
 s01_agent_loop.py - The Agent Loop
 
@@ -59,6 +60,12 @@ def agent_loop(messages: list):
     rounds_without_todo = 0
     while True:
         rounds += 1
+        messages[:] = micro_compact(messages)
+        print(f"主体第{rounds}轮。第一层压缩后消息：{messages}")
+        if should_compact(messages):
+            print("[auto_compact triggered]")
+            messages[:] = auto_compact(messages)
+            print(f"主体第{rounds}轮。第二层压缩后消息：{messages}")
         response = client_with_tools.invoke(messages)
         print(f"主体第{rounds}轮。大模型响应：content={response.content}")
         messages.append(response)
@@ -79,7 +86,7 @@ def agent_loop(messages: list):
                 rounds_without_todo = 0
             else:
                 rounds_without_todo += 1
-            messages.append(ToolMessage(content=output, tool_call_id=tool_call["id"]))
+            messages.append(ToolMessage(content=output, name=tool_name, tool_call_id=tool_call["id"]))
         if rounds_without_todo >= 3:
             messages.append(HumanMessage(content=TODO_REMINDER))
             print(f"主体第{rounds}轮。已注入 todo reminder")
