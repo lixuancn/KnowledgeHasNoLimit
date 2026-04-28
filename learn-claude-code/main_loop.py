@@ -1,36 +1,17 @@
 #!/usr/bin/env python3
 # Harness: the loop -- the model's first connection to the real world.
+import json
+from tool_background import BackgroundManage
 from compact import auto_compact, micro_compact, should_compact
-"""
-s01_agent_loop.py - The Agent Loop
-
-The entire secret of an AI coding agent in one pattern:
-
-    while stop_reason == "tool_use":
-        response = LLM(messages, tools)
-        execute tools
-        append results
-
-    +----------+      +-------+      +---------+
-    |   User   | ---> |  LLM  | ---> |  Tool   |
-    |  prompt  |      |       |      | execute |
-    +----------+      +---+---+      +----+----+
-                          ^               |
-                          |   tool_result |
-                          +---------------+
-                          (loop continues)
-
-This is the core loop: feed tool results back to the model
-until the model decides to stop. Production agents layer
-policy, hooks, and lifecycle controls on top.
-"""
-
 import llm
 from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
-from constant import TODO_REMINDER, WORKDIR
-from tool import PARENT_TOOLS, TOOL_HANDLERS
+from constant import ENABLE_COMPACT, TODO_REMINDER, WORKDIR
+from tool import TOOLS, TOOL_HANDLERS
 from skill import SKILL_LOADER
+from agent_teams import MessageBus
+
+
 
 try:
     import readline
@@ -43,15 +24,12 @@ except ImportError:
     pass
 
 load_dotenv(override=True)
-SYSTEM = f"""You are a coding agent at {WORKDIR}. Use bash to solve tasks. Act, don't explain.
+SYSTEM = f"""You are a coding agent at {WORKDIR}. Use task tools to plan and track work, Use background_run for long-running commands.  Spawn teammates and communicate via inboxes.".
 Skills available:
 {SKILL_LOADER.get_descriptions()}"""
 
-
-
-
 client = llm.LLM().ChatOpenAI()
-client_with_tools = client.bind_tools(PARENT_TOOLS).bind(max_tokens=8000)
+client_with_tools = client.bind_tools(TOOLS).bind(max_tokens=8000)
 
 
 # -- The core pattern: a while loop that calls tools until the model stops --
@@ -60,12 +38,24 @@ def agent_loop(messages: list):
     rounds_without_todo = 0
     while True:
         rounds += 1
-        messages[:] = micro_compact(messages)
-        print(f"主体第{rounds}轮。第一层压缩后消息：{messages}")
-        if should_compact(messages):
-            print("[auto_compact triggered]")
-            messages[:] = auto_compact(messages)
-            print(f"主体第{rounds}轮。第二层压缩后消息：{messages}")
+        # 收件箱
+        inbox = MessageBus.read_inbox("lead")
+        if inbox:
+            messages.append(HumanMessage(content=f"<inbox>{json.dumps(inbox, indent=2)}</inbox>"))
+        notifs = BackgroundManage.drain_notifications()
+        # 后台任务
+        if notifs:
+            notif_text = "\n".join(f"[bg:{n['task_id']}] {n['status']}: {n['result']}" for n in notifs)
+            print("notif_text:", notif_text)
+            messages.append(ToolMessage(content=notif_text, name="background_check", tool_call_id="background_check"))
+        # 压缩消息
+        if ENABLE_COMPACT:
+            messages[:] = micro_compact(messages)
+            print(f"主体第{rounds}轮。第一层压缩后消息：{messages}")
+            if should_compact(messages):
+                print("[auto_compact triggered]")
+                messages[:] = auto_compact(messages)
+                print(f"主体第{rounds}轮。第二层压缩后消息：{messages}")
         response = client_with_tools.invoke(messages)
         print(f"主体第{rounds}轮。大模型响应：content={response.content}")
         messages.append(response)

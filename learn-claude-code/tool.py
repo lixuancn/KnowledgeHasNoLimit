@@ -1,10 +1,24 @@
+from constant import VALID_MSG_TYPES
+import json
+from tool_background import BackgroundManage
+from tool_taskmanager import TASKS
 from pathlib import Path
 import subprocess
 from tool_todo import todo
-import llm
-from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from constant import WORKDIR
 from skill import SKILL_LOADER
+
+
+def _message_bus():
+    from agent_teams import MessageBus
+
+    return MessageBus
+
+
+def _teammate_manage():
+    from agent_teams import TeammateManage
+
+    return TeammateManage
 
 
 def safe_path(p: str) -> Path:
@@ -67,41 +81,24 @@ def run_edit(path: str, old_text: str, new_text: str) -> str:
     except Exception as e:
         return f"Error: {e}"
 
-# -- Subagent: fresh context, filtered tools, summary-only return --
-def run_subagent(prompt: str) -> str:
-    SUBAGENT_SYSTEM = f"You are a coding subagent at {WORKDIR}. Complete the given task, then summarize your findings."
-    sub_messages = [SystemMessage(content=SUBAGENT_SYSTEM)] + [HumanMessage(content=prompt)]  # fresh context
-    sub_client = llm.LLM().ChatOpenAI()
-    sub_client_with_tools = sub_client.bind_tools(TOOLS).bind(max_tokens=8000)
-    for _ in range(30):  # safety limit
-        response = sub_client_with_tools.invoke(sub_messages)
-        sub_messages.append(response)
-        if not response.tool_calls:
-            break
-        for tool_call in response.tool_calls:
-            tool_name = tool_call["name"]
-            tool_args = tool_call["args"]
-            print(f"SubAgent工具调用：{tool_name} {tool_args}")
-            handler = TOOL_HANDLERS.get(tool_name)
-            if handler is None:
-                output = f"Error: Unknown tool '{tool_name}'"
-            else:
-                print(f"\033[33m$ SubAgent工具调用：{tool_name}\033[0m")
-                output = handler(**tool_args)
-                print(f"SubAgent工具输出：{output[:200]}")
-            sub_messages.append(ToolMessage(content=output, tool_call_id=tool_call["id"]))
-    # Only the final text returns to the parent -- child context is discarded
-    return "".join(b.content for b in sub_messages if hasattr(b, "content")) or "(no summary)"
-
-
 TOOL_HANDLERS = {
     "bash": lambda **kw: run_bash(kw["command"]),
     "read_file": lambda **kw: run_read(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: run_write(kw["path"], kw["content"]),
     "edit_file": lambda **kw: run_edit(kw["path"], kw["old_text"], kw["new_text"]),
     "todo": lambda **kw: todo.update(kw["items"]),
-    "task": lambda **kw: run_subagent(kw["prompt"]),
     "load_skill": lambda **kw: SKILL_LOADER.get_content(kw["name"]),
+    "task_create": lambda **kw: TASKS.create(kw["subject"], kw.get("description", "")),
+    "task_update": lambda **kw: TASKS.update(kw["task_id"], kw.get("status"), kw.get("addBlockedBy"), kw.get("removeBlockedBy")),
+    "task_list":   lambda **_: TASKS.list_all(),
+    "task_get":    lambda **kw: TASKS.get(kw["task_id"]),
+    "background_run":   lambda **kw: BackgroundManage.run(kw["command"]),
+    "background_check": lambda **kw: BackgroundManage.check(kw.get("task_id")),
+    "send_message": lambda **kw: _message_bus().send(kw["sender"], kw["to"], kw["content"], kw.get("msg_type", "message")),
+    "read_inbox": lambda **kw: json.dumps(_message_bus().read_inbox(kw["name"]), indent=2),
+    "broadcast": lambda **kw: _message_bus().broadcast("lead", kw["content"], _teammate_manage().member_names()),
+    "spawn_teammate": lambda **kw: _teammate_manage().spawn(kw["name"], kw["role"], kw["prompt"]),
+    "list_teammates": lambda **_: _teammate_manage().list_all(),
 }
 
 TOOLS = [
@@ -212,23 +209,213 @@ TOOLS = [
             },
         },
     },
-]
-
-PARENT_TOOLS = TOOLS + [
     {
         "type": "function",
         "function": {
-            "name": "task",
-            "description": "Spawn a subagent with fresh context.",
+            "name": "task_create",
+            "description": "Create a new task.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "prompt": {
+                    "subject": {
                         "type": "string",
-                        "description": "The prompt to send to the subagent.",
+                        "description": "Task subject.",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Optional task description.",
+                    },
+                },
+                "required": ["subject"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "task_update",
+            "description": "Update a task's status or dependencies.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "integer",
+                        "description": "Task id.",
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "New task status.",
+                        "enum": ["pending", "in_progress", "completed"],
+                    },
+                    "addBlockedBy": {
+                        "type": "array",
+                        "description": "Task ids to add to blockedBy.",
+                        "items": {"type": "integer"},
+                    },
+                    "removeBlockedBy": {
+                        "type": "array",
+                        "description": "Task ids to remove from blockedBy.",
+                        "items": {"type": "integer"},
+                    },
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "task_list",
+            "description": "List all tasks with status summary.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "task_get",
+            "description": "Get full details of a task by ID.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "integer",
+                        "description": "Task id.",
                     }
                 },
-                "required": ["prompt"],
+                "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "background_run",
+            "description": "Run command in background thread. Returns task_id immediately.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Shell command to run in the background.",
+                    }
+                },
+                "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "background_check",
+            "description": "Check background task status. Omit task_id to list all.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Optional background task id.",
+                    }
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_message",
+            "description": "Send a message to a teammate's inbox",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sender": {"type": "string", "description": "Sender teammate name."},
+                    "to": {"type": "string", "description": "Receiver teammate name."},
+                    "content": {"type": "string"},
+                    "msg_type": {
+                        "type": "string",
+                        "enum": list(VALID_MSG_TYPES),
+                    },
+                },
+                "required": ["sender", "to", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_inbox",
+            "description": "Read and drain the lead's inbox.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                     "name": {
+                        "type": "string",
+                        "description": "Teammate name.",
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "broadcast",
+            "description": "Send a message to all teammates.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sender": {"type": "string", "description": "Sender teammate name."},
+                    "content": {
+                        "type": "string",
+                        "description": "Message content to broadcast.",
+                    },
+                    "teammates": {
+                        "type": "array",
+                        "description": "List of teammate names to broadcast to.",
+                        "items": {"type": "string"},
+                    },
+                },
+                "required": ["sender", "content", "teammates"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "spawn_teammate",
+            "description": "Spawn a persistent teammate that runs in its own thread.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Teammate name.",
+                    },
+                    "role": {
+                        "type": "string",
+                        "description": "Teammate role.",
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "description": "Initial task prompt for the teammate.",
+                    },
+                },
+                "required": ["name", "role", "prompt"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_teammates",
+            "description": "List all teammates with name, role, status.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
             },
         },
     },

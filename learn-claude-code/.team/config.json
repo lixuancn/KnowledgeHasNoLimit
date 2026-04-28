@@ -1,0 +1,25 @@
+{
+  "team_name": "default",
+  "members": [
+    {
+      "name": "alice",
+      "role": "coder",
+      "status": "pending"
+    },
+    {
+      "name": "bob",
+      "role": "tester",
+      "status": "pending"
+    },
+    {
+      "name": "Alice",
+      "role": "coder",
+      "status": "working"
+    },
+    {
+      "name": "Bob",
+      "role": "tester",
+      "status": "working"
+    }
+  ]
+}
