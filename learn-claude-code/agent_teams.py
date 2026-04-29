@@ -1,4 +1,5 @@
 # -- MessageBuser: JSONL inbox per teammate --
+import uuid
 from constant import TEAM_DIR
 from tool import TOOL_HANDLERS
 import llm
@@ -55,6 +56,9 @@ class MessageBuser:
 
 MessageBus = MessageBuser(INBOX_DIR)
 
+shutdown_requests = {}
+plan_requests = {}
+_tracker_lock = threading.Lock()
 
 # -- TeammateManager: persistent named agents with config.json --
 class TeammateManager:
@@ -98,46 +102,52 @@ class TeammateManager:
         )
         self.threads[name] = thread
         thread.start()
-        print(f"启动子agent：'{name}' (role: {role})")
+        print(f"\033[34m启动子agent：'{name}' (role: {role})")
         return f"Spawned '{name}' (role: {role})"
 
     def _teammate_loop(self, name: str, role: str, prompt: str):
         sys_prompt = (
             f"You are '{name}', role: {role}, at {WORKDIR}. "
             f"Use send_message to communicate. Complete your task."
+            f"Submit plans via plan_approval before major work."
+            f"Respond to shutdown_request with shutdown_response."
         )
         messages = [SystemMessage(content=sys_prompt), HumanMessage(content=prompt)]
         rounds = 0
+        should_exit = False
         for _ in range(50):
             rounds += 1
             inbox = MessageBus.read_inbox(name)
             for msg in inbox:
-                print(f"子agent {name} 第{rounds}轮。读取收件箱内容：{msg}")
+                print(f"\033[34m$ 子agent {name} 第{rounds}轮。读取收件箱内容：{msg}\033[0m")
                 messages.append(HumanMessage(content=json.dumps(msg)))
+            if should_exit:
+                break
             try:
                 response = self.client_with_tools.invoke(messages)   
             except Exception:
                 break
-            print(f"子agent {name} 第{rounds}轮。大模型响应：content={response.content}")
+            print(f"\033[34m$ 子agent {name} 第{rounds}轮。大模型响应：content={response.content}\033[0m")
             messages.append(response)
             if not response.tool_calls:
                 return
             for tool_call in response.tool_calls:
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
-                print(f"子agent {name} 第{rounds}轮。工具调用：{tool_name}({tool_args})")
+                print(f"\033[34m$ 子agent {name} 第{rounds}轮。工具调用：{tool_name}({tool_args})\033[0m")
                 handler = TOOL_HANDLERS.get(tool_name)
                 if handler is None:
                     output = f"Error: Unknown tool '{tool_name}'"
                 else:
                     print(f"\033[33m$ 子agent {name} 第{rounds}轮。执行工具：{tool_name}({tool_args})\033[0m")
                     output = handler(**tool_args)
-                print(f"子agent {name} 第{rounds}轮。工具结果：{output[:200]}")
+                print(f"\033[34m$ 子agent {name} 第{rounds}轮。工具结果：{output[:200]}\033[0m")
                 messages.append(ToolMessage(content=output, name=tool_name, tool_call_id=tool_call["id"]))
-
+                if tool_name == "shutdown_response" and tool_args.get("approve"):
+                    should_exit = True
         member = self._find_member(name)
-        if member and member["status"] != "shutdown":
-            member["status"] = "idle"
+        if member:
+            member["status"] = "shutdown" if should_exit else "idle"
             self._save_config()
 
     def list_all(self) -> str:
@@ -150,6 +160,20 @@ class TeammateManager:
 
     def member_names(self) -> list:
         return [m["name"] for m in self.config["members"]]
+    
+    def shutdown_response(self, sender: str, request_id: str, approve: bool, reason: str = None) -> str:
+        req_id = request_id
+        with _tracker_lock:
+            if req_id in shutdown_requests:
+                shutdown_requests[req_id]["status"] = "approved" if approve else "rejected"
+            MessageBus.send(sender, "lead", reason, "shutdown_response", {"request_id": req_id, "approve": approve})
+            return f"Shutdown {'approved' if approve else 'rejected'}"
 
+    def plan_approval(self, sender: str, plan_text: str) -> str:
+        req_id = str(uuid.uuid4())[:8]
+        with _tracker_lock:
+            plan_requests[req_id] = {"from": sender, "plan": plan_text, "status": "pending"}
+        MessageBus.send(sender, "lead", plan_text, "plan_approval_response", {"request_id": req_id, "plan": plan_text})
+        return f"Plan submitted (request_id={req_id}). Waiting for lead approval."
 
 TeammateManage = TeammateManager(TEAM_DIR)

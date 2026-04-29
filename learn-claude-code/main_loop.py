@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 # Harness: the loop -- the model's first connection to the real world.
 import json
@@ -24,7 +25,7 @@ except ImportError:
     pass
 
 load_dotenv(override=True)
-SYSTEM = f"""You are a coding agent at {WORKDIR}. Use task tools to plan and track work, Use background_run for long-running commands.  Spawn teammates and communicate via inboxes.".
+SYSTEM = f"""You are a coding agent at {WORKDIR}. Use task tools to plan and track work, Use background_run for long-running commands.  Spawn teammates and communicate via inboxes.
 Skills available:
 {SKILL_LOADER.get_descriptions()}"""
 
@@ -55,31 +56,30 @@ def agent_loop(messages: list):
             if should_compact(messages):
                 print("[auto_compact triggered]")
                 messages[:] = auto_compact(messages)
-                print(f"主体第{rounds}轮。第二层压缩后消息：{messages}")
+                print(f"\033[33m$ 主体第{rounds}轮。第二层压缩后消息：{messages}\033[0m")
         response = client_with_tools.invoke(messages)
-        print(f"主体第{rounds}轮。大模型响应：content={response.content}")
+        print(f"\033[33m$ 主体第{rounds}轮。大模型响应：content={response.content}\033[0m")
         messages.append(response)
         if not response.tool_calls:
             return
         for tool_call in response.tool_calls:
             tool_name = tool_call["name"]
             tool_args = tool_call["args"]
-            print(f"主体第{rounds}轮。工具调用：{tool_name}({tool_args})")
+            print(f"\033[33m$ 主体第{rounds}轮。工具调用：{tool_name}({tool_args})\033[0m")
             handler = TOOL_HANDLERS.get(tool_name)
             if handler is None:
                 output = f"Error: Unknown tool '{tool_name}'"
             else:
                 print(f"\033[33m$ 主体第{rounds}轮。执行工具：{tool_name}({tool_args})\033[0m")
                 output = handler(**tool_args)
-                print(f"主体第{rounds}轮。工具结果：{output[:200]}")
+                print(f"\033[33m$ 主体第{rounds}轮。工具结果：{output[:200]}\033[0m")
             if tool_name == 'todo':
                 rounds_without_todo = 0
             else:
                 rounds_without_todo += 1
             messages.append(ToolMessage(content=output, name=tool_name, tool_call_id=tool_call["id"]))
         if rounds_without_todo >= 3:
-            messages.append(HumanMessage(content=TODO_REMINDER))
-            print(f"主体第{rounds}轮。已注入 todo reminder")
+            print(f"\033[33m$ 主体第{rounds}轮。已注入 todo reminder\033[0m")
             rounds_without_todo = 0
 
 if __name__ == "__main__":

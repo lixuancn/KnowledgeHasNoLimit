@@ -1,3 +1,4 @@
+import uuid
 from constant import VALID_MSG_TYPES
 import json
 from tool_background import BackgroundManage
@@ -11,15 +12,24 @@ from skill import SKILL_LOADER
 
 def _message_bus():
     from agent_teams import MessageBus
-
     return MessageBus
 
 
 def _teammate_manage():
     from agent_teams import TeammateManage
-
     return TeammateManage
 
+def _tracker_lock():
+    from agent_teams import _tracker_lock
+    return _tracker_lock
+
+def _shutdown_requests():
+    from agent_teams import shutdown_requests
+    return shutdown_requests
+
+def _plan_requests():
+    from agent_teams import plan_requests
+    return plan_requests
 
 def safe_path(p: str) -> Path:
     path = (WORKDIR / p).resolve()
@@ -80,6 +90,28 @@ def run_edit(path: str, old_text: str, new_text: str) -> str:
         return f"Edited {path}"
     except Exception as e:
         return f"Error: {e}"
+    
+# -- Lead-specific protocol handlers --
+def handle_shutdown_request(teammate: str) -> str:
+    req_id = str(uuid.uuid4())[:8]
+    with _tracker_lock():
+        _shutdown_requests()[req_id] = {"target": teammate, "status": "pending"}
+    _message_bus().send("lead", teammate, "Please shut down gracefully.", "shutdown_request", {"request_id": req_id},)
+    return f"Shutdown request {req_id} sent to '{teammate}' (status: pending)"
+
+def check_shutdown_status(request_id: str) -> str:
+    with _tracker_lock():
+        return json.dumps(_shutdown_requests().get(request_id, {"error": "not found"}))
+
+def handle_plan_review(request_id: str, approve: bool, feedback: str = "") -> str:
+    with _tracker_lock():
+        req = _plan_requests().get(request_id)
+    if not req:
+        return f"Error: Unknown plan request_id '{request_id}'"
+    with _tracker_lock():
+        req["status"] = "approved" if approve else "rejected"
+    _message_bus().send("lead", req["from"], feedback, "plan_approval_response", {"request_id": request_id, "approve": approve, "feedback": feedback})
+    return f"Plan {req['status']} for '{req['from']}'"
 
 TOOL_HANDLERS = {
     "bash": lambda **kw: run_bash(kw["command"]),
@@ -99,6 +131,11 @@ TOOL_HANDLERS = {
     "broadcast": lambda **kw: _message_bus().broadcast("lead", kw["content"], _teammate_manage().member_names()),
     "spawn_teammate": lambda **kw: _teammate_manage().spawn(kw["name"], kw["role"], kw["prompt"]),
     "list_teammates": lambda **_: _teammate_manage().list_all(),
+    "shutdown_response": lambda **kw: _teammate_manage().shutdown_response(kw["sender"], kw["request_id"], kw["approve"], kw.get("reason")),
+    "plan_approval": lambda **kw: _teammate_manage().plan_approval(kw["sender"], kw["plan_text"]),
+    "shutdown_request":  lambda **kw: handle_shutdown_request(kw["teammate"]),
+    "check_shutdown_status": lambda **kw: check_shutdown_status(kw.get("request_id", "")),
+    "plan_review":     lambda **kw: handle_plan_review(kw["request_id"], kw["approve"], kw.get("feedback", "")),
 }
 
 TOOLS = [
@@ -416,6 +453,100 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "shutdown_response",
+            "description": "Respond to a shutdown request. Approve to shut down, reject to keep working.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sender": {"type": "string", "description": "Sender teammate name."},
+                    "request_id": {
+                        "type": "string",
+                        "description": "Shutdown request id.",
+                    },
+                    "approve": {
+                        "type": "boolean",
+                        "description": "Whether to approve the shutdown request.",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Optional reason for the shutdown request.",
+                    },
+                },
+                "required": ["sender", "request_id", "approve"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "plan_approval",
+            "description": "Submit a plan for lead approval. Provide plan text.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sender": {"type": "string", "description": "Sender teammate name."},
+                    "plan_text": {
+                        "type": "string",
+                        "description": "Plan text to submit.",
+                    },
+                },
+                "required": ["sender", "plan_text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "shutdown_request",
+            "description": "Request a teammate to shut down gracefully. Returns a request_id for tracking.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "teammate": {"type": "string", "description": "Teammate name."},
+                },
+                "required": ["teammate"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_shutdown_status",
+            "description": "Check the status of a shutdown request by request_id.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "request_id": {"type": "string", "description": "Shutdown request id."},
+                },
+                "required": ["request_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "plan_review",
+            "description": "Approve or reject a teammate's plan. Provide request_id + approve + optional feedback.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "request_id": {"type": "string", "description": "Plan request id."},
+                    "approve": {
+                        "type": "boolean",
+                        "description": "Whether to approve the plan.",
+                    },
+                    "feedback": {
+                        "type": "string",
+                        "description": "Optional feedback for the plan.",
+                    },
+                },
+                "required": ["request_id", "approve"],
             },
         },
     },
