@@ -10,16 +10,6 @@
       "name": "bob",
       "role": "tester",
       "status": "pending"
-    },
-    {
-      "name": "Alice",
-      "role": "coder",
-      "status": "working"
-    },
-    {
-      "name": "Bob",
-      "role": "tester",
-      "status": "working"
     }
   ]
 }

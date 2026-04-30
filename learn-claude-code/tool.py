@@ -113,7 +113,7 @@ def handle_plan_review(request_id: str, approve: bool, feedback: str = "") -> st
     _message_bus().send("lead", req["from"], feedback, "plan_approval_response", {"request_id": request_id, "approve": approve, "feedback": feedback})
     return f"Plan {req['status']} for '{req['from']}'"
 
-TOOL_HANDLERS = {
+ALL_TOOL_HANDLERS = {
     "bash": lambda **kw: run_bash(kw["command"]),
     "read_file": lambda **kw: run_read(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: run_write(kw["path"], kw["content"]),
@@ -138,7 +138,7 @@ TOOL_HANDLERS = {
     "plan_review":     lambda **kw: handle_plan_review(kw["request_id"], kw["approve"], kw.get("feedback", "")),
 }
 
-TOOLS = [
+ALL_TOOLS = [
     {
         "type": "function",
         "function": {
@@ -551,3 +551,75 @@ TOOLS = [
         },
     },
 ]
+
+
+TOOL_PROFILES = {
+    "lead": [
+        "bash",
+        "read_file",
+        "write_file",
+        "edit_file",
+        "send_message",
+        "read_inbox",
+        "broadcast",
+        "spawn_teammate",
+        "list_teammates",
+        "shutdown_request",
+        "check_shutdown_status",
+        "plan_review",
+    ],
+    "teammate": [
+        "bash",
+        "read_file",
+        "write_file",
+        "edit_file",
+        "send_message",
+        "read_inbox",
+        "shutdown_response",
+        "plan_approval",
+    ],
+    "subagent": [
+        "bash",
+        "read_file",
+        "write_file",
+        "edit_file",
+        "todo",
+        "load_skill",
+        "task_create",
+        "task_update",
+        "task_list",
+        "task_get",
+        "background_run",
+        "background_check",
+    ],
+}
+
+
+def _tool_name(schema: dict) -> str:
+    return schema["function"]["name"]
+
+
+def get_tool_names(profile: str) -> list[str]:
+    names = TOOL_PROFILES.get(profile)
+    if names is None:
+        raise ValueError(
+            f"Unknown tool profile '{profile}'. Valid: {', '.join(sorted(TOOL_PROFILES))}"
+        )
+    return list(names)
+
+
+def build_tools(profile: str) -> list[dict]:
+    wanted = set(get_tool_names(profile))
+    return [schema for schema in ALL_TOOLS if schema["function"]["name"] in wanted]
+
+
+def build_tool_handlers(profile: str) -> dict:
+    return {name: ALL_TOOL_HANDLERS[name] for name in get_tool_names(profile)}
+
+
+LEAD_TOOLS = build_tools("lead")
+LEAD_TOOL_HANDLERS = build_tool_handlers("lead")
+TEAMMATE_TOOLS = build_tools("teammate")
+TEAMMATE_TOOL_HANDLERS = build_tool_handlers("teammate")
+SUBAGENT_TOOLS = build_tools("subagent")
+SUBAGENT_TOOL_HANDLERS = build_tool_handlers("subagent")

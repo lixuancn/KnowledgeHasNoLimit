@@ -8,7 +8,7 @@ import llm
 from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from constant import ENABLE_COMPACT, TODO_REMINDER, WORKDIR
-from tool import TOOLS, TOOL_HANDLERS
+from tool import LEAD_TOOLS, LEAD_TOOL_HANDLERS
 from skill import SKILL_LOADER
 from agent_teams import MessageBus
 
@@ -25,12 +25,12 @@ except ImportError:
     pass
 
 load_dotenv(override=True)
-SYSTEM = f"""You are a coding agent at {WORKDIR}. Use task tools to plan and track work, Use background_run for long-running commands.  Spawn teammates and communicate via inboxes.
+SYSTEM = f"""your name is lead，You are a coding agent at {WORKDIR}. Use task tools to plan and track work, Use background_run for long-running commands.  Spawn teammates and communicate via inboxes.
 Skills available:
 {SKILL_LOADER.get_descriptions()}"""
 
 client = llm.LLM().ChatOpenAI()
-client_with_tools = client.bind_tools(TOOLS).bind(max_tokens=8000)
+client_with_tools = client.bind_tools(LEAD_TOOLS).bind(max_tokens=8000)
 
 
 # -- The core pattern: a while loop that calls tools until the model stops --
@@ -66,7 +66,7 @@ def agent_loop(messages: list):
             tool_name = tool_call["name"]
             tool_args = tool_call["args"]
             print(f"\033[33m$ 主体第{rounds}轮。工具调用：{tool_name}({tool_args})\033[0m")
-            handler = TOOL_HANDLERS.get(tool_name)
+            handler = LEAD_TOOL_HANDLERS.get(tool_name)
             if handler is None:
                 output = f"Error: Unknown tool '{tool_name}'"
             else:

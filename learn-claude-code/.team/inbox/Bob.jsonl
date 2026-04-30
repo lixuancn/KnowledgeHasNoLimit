@@ -1,1 +1,2 @@
-{"type": "message", "from": "Alice", "content": "Great job Bob! All tests are passing! Let's check git status to see if there are any uncommitted changes!", "timestamp": 1777379619.7806}
+{"type": "broadcast", "from": "lead", "content": "\u6211\u7ed9\u4f60\u8bf4ping\uff0c\u4f60\u56de\u590d\u4e00\u4e2apong,\u5176\u4ed6\u4ec0\u4e48\u90fd\u4e0d\u9700\u8981\u505a", "timestamp": 1777456684.163316}
+{"type": "broadcast", "from": "lead", "content": "\u6211\u7ed9\u4f60\u8bf4ping\uff0c\u4f60\u56de\u590d\u4e00\u4e2apong,\u5176\u4ed6\u4ec0\u4e48\u90fd\u4e0d\u9700\u8981\u505a", "timestamp": 1777456684.177293}

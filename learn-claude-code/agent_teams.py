@@ -1,7 +1,7 @@
 # -- MessageBuser: JSONL inbox per teammate --
 import uuid
 from constant import TEAM_DIR
-from tool import TOOL_HANDLERS
+from tool import TEAMMATE_TOOLS, TEAMMATE_TOOL_HANDLERS
 import llm
 import threading
 from pathlib import Path
@@ -9,7 +9,6 @@ import time
 import json
 from constant import VALID_MSG_TYPES, INBOX_DIR, WORKDIR
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from tool import TOOLS
 
 
 
@@ -68,7 +67,7 @@ class TeammateManager:
         self.config_path = self.dir / "config.json"
         self.config = self._load_config()
         self.threads = {}
-        self.client_with_tools = llm.LLM().ChatOpenAI().bind_tools(TOOLS).bind(max_tokens=8000)
+        self.client_with_tools = llm.LLM().ChatOpenAI().bind_tools(TEAMMATE_TOOLS).bind(max_tokens=8000)
 
     def _load_config(self) -> dict:
         if self.config_path.exists():
@@ -135,7 +134,7 @@ class TeammateManager:
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
                 print(f"\033[34m$ 子agent {name} 第{rounds}轮。工具调用：{tool_name}({tool_args})\033[0m")
-                handler = TOOL_HANDLERS.get(tool_name)
+                handler = TEAMMATE_TOOL_HANDLERS.get(tool_name)
                 if handler is None:
                     output = f"Error: Unknown tool '{tool_name}'"
                 else:
