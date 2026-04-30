@@ -84,16 +84,23 @@ class TeammateManager:
         return None
 
     def spawn(self, name: str, role: str, prompt: str) -> str:
+        # Step 1: ensure the member exists in config and persist its working state.
         member = self._find_member(name)
         if member:
-            if member["status"] not in ("idle", "shutdown"):
-                return f"Error: '{name}' is currently {member['status']}"
             member["status"] = "working"
             member["role"] = role
         else:
             member = {"name": name, "role": role, "status": "working"}
             self.config["members"].append(member)
         self._save_config()
+
+        # Step 2: reuse a live thread if present; otherwise start a fresh one.
+        existing_thread = self.threads.get(name)
+        if existing_thread is not None and existing_thread.is_alive():
+            return f"'{name}' is already running"
+        if existing_thread is not None:
+            del self.threads[name]
+
         thread = threading.Thread(
             target=self._teammate_loop,
             args=(name, role, prompt),
