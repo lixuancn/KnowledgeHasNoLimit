@@ -1,6 +1,8 @@
 
 #!/usr/bin/env python3
 # Harness: the loop -- the model's first connection to the real world.
+from constant import TASKS_DIR
+from agent_teams import TeammateManage
 import json
 from tool_background import BackgroundManage
 from compact import auto_compact, micro_compact, should_compact
@@ -83,6 +85,8 @@ def agent_loop(messages: list):
             rounds_without_todo = 0
 
 if __name__ == "__main__":
+    history = []
+    known_commands = {"/team", "/inbox", "/new", "/tasks"}
     while True:
         try:
             query = input("\033[36ms01 >> \033[0m")
@@ -90,7 +94,29 @@ if __name__ == "__main__":
             break
         if query.strip().lower() in ("q", "exit", ""):
             break
-        history = [SystemMessage(content=SYSTEM), HumanMessage(content=query)]
+        if query.strip() == "/team":
+            print(TeammateManage.list_all())
+            continue
+        elif query.strip() == "/inbox":
+            print(json.dumps(MessageBus.read_inbox("lead"), indent=2))
+            continue
+        elif query.strip() == "/new":
+            history = []
+            continue
+        elif query.strip().startswith("/") and query.strip() not in known_commands:
+            print(f"Error: Unknown command '{query.strip()}'")
+            continue
+        if history is None or len(history) == 0:
+            history = [SystemMessage(content=SYSTEM)]
+        if query.strip() == "/tasks":
+            TASKS_DIR.mkdir(exist_ok=True)
+            for f in sorted(TASKS_DIR.glob("task_*.json")):
+                t = json.loads(f.read_text())
+                marker = {"pending": "[ ]", "in_progress": "[>]", "completed": "[x]"}.get(t["status"], "[?]")
+                owner = f" @{t['owner']}" if t.get("owner") else ""
+                print(f"  {marker} #{t['id']}: {t['subject']}{owner}")
+            continue
+        history.append(HumanMessage(content=query))
         print(f"进入核心循环的消息：{history}")
         agent_loop(history)
         response_content = history[-1].content

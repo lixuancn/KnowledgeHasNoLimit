@@ -136,6 +136,8 @@ ALL_TOOL_HANDLERS = {
     "shutdown_request":  lambda **kw: handle_shutdown_request(kw["teammate"]),
     "check_shutdown_status": lambda **kw: check_shutdown_status(kw.get("request_id", "")),
     "plan_review":     lambda **kw: handle_plan_review(kw["request_id"], kw["approve"], kw.get("feedback", "")),
+    "claim_task": lambda **kw: _teammate_manage().claim_task(kw["task_id"], kw["owner"]),
+    "idle": lambda **kw: "Lead does not idle.",
 }
 
 ALL_TOOLS = [
@@ -550,6 +552,33 @@ ALL_TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "idle",
+            "description": "Signal that you have no more work. Enters idle polling phase.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "claim_task",
+            "description": "Claim a task from the task board by ID.",
+             "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "integer"}, 
+                    "owner": {"type": "string"},
+                },
+                "required": ["task_id", "owner"],
+            },
+        },
+    },
 ]
 
 
@@ -567,6 +596,8 @@ TOOL_PROFILES = {
         "shutdown_request",
         "check_shutdown_status",
         "plan_review",
+        "idle",
+        "claim_task",
     ],
     "teammate": [
         "bash",
@@ -577,6 +608,8 @@ TOOL_PROFILES = {
         "read_inbox",
         "shutdown_response",
         "plan_approval",
+        "idle",
+        "claim_task",
     ],
     "subagent": [
         "bash",

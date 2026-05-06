@@ -4,12 +4,12 @@
     {
       "name": "alice",
       "role": "coder",
-      "status": "shutdown"
+      "status": "idle"
     },
     {
       "name": "bob",
-      "role": "tester",
-      "status": "pending"
+      "role": "agent",
+      "status": "shutdown"
     }
   ]
 }
