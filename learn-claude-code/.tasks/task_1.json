@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "subject": "Implement backend authentication",
+  "description": "Create backend API endpoints for user registration, login, and token management",
+  "status": "completed",
+  "owner": "",
+  "worktree": "",
+  "blockedBy": [],
+  "created_at": 1778136940.999157,
+  "updated_at": 1778146936.77633
+}

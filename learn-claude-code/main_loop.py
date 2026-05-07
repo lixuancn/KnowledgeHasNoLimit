@@ -9,7 +9,7 @@ from compact import auto_compact, micro_compact, should_compact
 import llm
 from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
-from constant import ENABLE_COMPACT, TASKS_DIR
+from constant import ENABLE_COMPACT, TASKS_DIR, SYSTEM
 from tool import LEAD_TOOLS, LEAD_TOOL_HANDLERS
 from skill import SKILL_LOADER
 from agent_teams import MessageBus
@@ -104,7 +104,7 @@ if __name__ == "__main__":
             print(f"Error: Unknown command '{query.strip()}'")
             continue
         if history is None or len(history) == 0:
-            System_prompt = constant.SYSTEM + f"""
+            System_prompt = SYSTEM + f"""
 Skills available:
 {SKILL_LOADER.get_descriptions()}"""
             history = [SystemMessage(content=System_prompt)]
