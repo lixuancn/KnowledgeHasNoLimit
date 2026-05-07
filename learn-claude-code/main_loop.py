@@ -1,7 +1,7 @@
 
 #!/usr/bin/env python3
 # Harness: the loop -- the model's first connection to the real world.
-from constant import TASKS_DIR
+
 from agent_teams import TeammateManage
 import json
 from tool_background import BackgroundManage
@@ -9,7 +9,7 @@ from compact import auto_compact, micro_compact, should_compact
 import llm
 from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
-from constant import ENABLE_COMPACT, TODO_REMINDER, WORKDIR
+from constant import ENABLE_COMPACT, TASKS_DIR
 from tool import LEAD_TOOLS, LEAD_TOOL_HANDLERS
 from skill import SKILL_LOADER
 from agent_teams import MessageBus
@@ -27,9 +27,6 @@ except ImportError:
     pass
 
 load_dotenv(override=True)
-SYSTEM = f"""your name is lead，You are a coding agent at {WORKDIR}. Use task tools to plan and track work, Use background_run for long-running commands.  Spawn teammates and communicate via inboxes.
-Skills available:
-{SKILL_LOADER.get_descriptions()}"""
 
 client = llm.LLM().ChatOpenAI()
 client_with_tools = client.bind_tools(LEAD_TOOLS).bind(max_tokens=8000)
@@ -107,7 +104,10 @@ if __name__ == "__main__":
             print(f"Error: Unknown command '{query.strip()}'")
             continue
         if history is None or len(history) == 0:
-            history = [SystemMessage(content=SYSTEM)]
+            System_prompt = constant.SYSTEM + f"""
+Skills available:
+{SKILL_LOADER.get_descriptions()}"""
+            history = [SystemMessage(content=System_prompt)]
         if query.strip() == "/tasks":
             TASKS_DIR.mkdir(exist_ok=True)
             for f in sorted(TASKS_DIR.glob("task_*.json")):

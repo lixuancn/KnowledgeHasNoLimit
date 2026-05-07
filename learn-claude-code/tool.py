@@ -8,6 +8,9 @@ import subprocess
 from tool_todo import todo
 from constant import WORKDIR
 from skill import SKILL_LOADER
+from git_worktree import WORKTREES
+from event_bus import EVENTS
+
 
 
 def _message_bus():
@@ -121,9 +124,18 @@ ALL_TOOL_HANDLERS = {
     "todo": lambda **kw: todo.update(kw["items"]),
     "load_skill": lambda **kw: SKILL_LOADER.get_content(kw["name"]),
     "task_create": lambda **kw: TASKS.create(kw["subject"], kw.get("description", "")),
-    "task_update": lambda **kw: TASKS.update(kw["task_id"], kw.get("status"), kw.get("addBlockedBy"), kw.get("removeBlockedBy")),
+    "task_update": lambda **kw: TASKS.update(kw["task_id"], kw.get("status"), kw.get("owner")),
     "task_list":   lambda **_: TASKS.list_all(),
-    "task_get":    lambda **kw: TASKS.get(kw["task_id"]),
+    "task_get": lambda **kw: TASKS.get(kw["task_id"]),
+    "task_bind_worktree": lambda **kw: TASKS.bind_worktree(kw["task_id"], kw["worktree"], kw.get("owner", "")),
+    "worktree_create": lambda **kw: WORKTREES.create(kw["name"], kw.get("task_id"), kw.get("base_ref", "HEAD")),
+    "worktree_list": lambda **kw: WORKTREES.list_all(),
+    "worktree_status": lambda **kw: WORKTREES.status(kw["name"]),
+    "worktree_run": lambda **kw: WORKTREES.run(kw["name"], kw["command"]),
+    "worktree_keep": lambda **kw: WORKTREES.keep(kw["name"]),
+    "worktree_remove": lambda **kw: WORKTREES.remove(kw["name"], kw.get("force", False), kw.get("complete_task", False)),
+    "worktree_events": lambda **kw: EVENTS.list_recent(kw.get("limit", 20)),
+    
     "background_run":   lambda **kw: BackgroundManage.run(kw["command"]),
     "background_check": lambda **kw: BackgroundManage.check(kw.get("task_id")),
     "send_message": lambda **kw: _message_bus().send(kw["sender"], kw["to"], kw["content"], kw.get("msg_type", "message")),
@@ -273,7 +285,7 @@ ALL_TOOLS = [
         "type": "function",
         "function": {
             "name": "task_update",
-            "description": "Update a task's status or dependencies.",
+            "description": "Update task status or owner.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -286,15 +298,9 @@ ALL_TOOLS = [
                         "description": "New task status.",
                         "enum": ["pending", "in_progress", "completed"],
                     },
-                    "addBlockedBy": {
-                        "type": "array",
-                        "description": "Task ids to add to blockedBy.",
-                        "items": {"type": "integer"},
-                    },
-                    "removeBlockedBy": {
-                        "type": "array",
-                        "description": "Task ids to remove from blockedBy.",
-                        "items": {"type": "integer"},
+                    "owner": {
+                        "type": "string",
+                        "description": "Task owner.",
                     },
                 },
                 "required": ["task_id"],
@@ -332,6 +338,123 @@ ALL_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "task_bind_worktree",
+            "description": "Bind a task to a worktree name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "integer", "description": "Task id."},
+                    "worktree": {"type": "string", "description": "Worktree name."},
+                    "owner": {"type": "string", "description": "Task owner."},
+                },
+                "required": ["task_id", "worktree"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_create",
+            "description": "Create a git worktree and optionally bind it to a task.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Worktree name."},
+                    "task_id": {"type": "integer", "description": "Task id."},
+                    "base_ref": {"type": "string", "description": "Optional base ref (branch, tag, or HEAD)."},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_list",
+            "description": "List worktrees tracked in .worktrees/index.json.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_status",
+            "description": "Show git status for one worktree.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Worktree name."},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_run",
+            "description": "Run a shell command in a named worktree directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Worktree name."},
+                    "command": {"type": "string", "description": "Shell command to run."},
+                },
+                "required": ["name", "command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_remove",
+            "description": "Remove a worktree and optionally mark its bound task completed.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Worktree name."},
+                    "force": {"type": "boolean", "description": "Force remove the worktree even if it's not empty."},
+                    "complete_task": {"type": "boolean", "description": "Mark the bound task as completed."},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_keep",
+            "description": "Mark a worktree as kept in lifecycle state without removing it.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Worktree name."},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "worktree_events",
+            "description": "List recent worktree/task lifecycle events from .worktrees/events.jsonl.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "description": "Optional max number of events to list."},
+                },
+                "required": [""],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "background_run",
             "description": "Run command in background thread. Returns task_id immediately.",
             "parameters": {
@@ -346,6 +469,7 @@ ALL_TOOLS = [
             },
         },
     },
+
     {
         "type": "function",
         "function": {
