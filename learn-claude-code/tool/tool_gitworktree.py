@@ -2,8 +2,8 @@
 # -- WorktreeManager: create/list/run/remove git worktrees + lifecycle index --
 import re
 from pathlib import Path
-from tool_taskmanager import TASKS, TaskManager
-from event_bus import EVENTS, EventBus, REPO_ROOT
+from tool.tool_taskmanager import TaskManager
+from tool.tool_eventbus import EventBus
 import json
 import subprocess
 import time
@@ -255,6 +255,3 @@ class WorktreeManager:
             },
         )
         return json.dumps(kept, indent=2) if kept else f"Error: Unknown worktree '{name}'"
-
-
-WORKTREES = WorktreeManager(REPO_ROOT, TASKS, EVENTS)

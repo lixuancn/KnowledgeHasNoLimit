@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from skill import SkillLoader
+from tool.tool_skill import SkillLoader
 
 
 class TestSkillLoader(unittest.TestCase):
